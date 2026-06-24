@@ -1,16 +1,17 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Any
 
 
 @dataclass(frozen=True)
 class SdsRequest:
     method: str
     uri: str
-    body: dict[str, object] = field(default_factory=dict)
+    body: Any = field(default_factory=dict)
     type: str = "Request"
 
-    def to_payload(self, request_id: int) -> dict[str, object]:
+    def to_payload(self, request_id: int) -> dict[str, Any]:
         return {
             "Type": self.type,
             "Method": self.method,
@@ -25,19 +26,28 @@ class SdsResponse:
     request_id: int
     status: int
     uri: str
-    body: dict[str, object]
-    raw: dict[str, object]
+    body: Any
+    raw: dict[str, Any]
 
     @classmethod
-    def from_payload(cls, payload: dict[str, object]) -> "SdsResponse":
-        body = payload.get("Body", {})
-        if not isinstance(body, dict):
-            raise ValueError("SDS response body must be a mapping")
+    def from_payload(cls, payload: dict[str, Any]) -> "SdsResponse":
+        if not isinstance(payload, dict):
+            raise ValueError("SDS response payload must be an object")
+
+        response_type = _require_field(payload, "Type")
+        if response_type != "Response":
+            raise ValueError(f"invalid response type: {response_type}")
 
         return cls(
-            request_id=int(payload["RequestId"]),
-            status=int(payload["Status"]),
-            uri=str(payload["Uri"]),
-            body=body,
+            request_id=int(_require_field(payload, "RequestId")),
+            status=int(_require_field(payload, "Status")),
+            uri=str(_require_field(payload, "Uri")),
+            body=payload.get("Body"),
             raw=payload,
         )
+
+
+def _require_field(payload: dict[str, Any], field_name: str) -> Any:
+    if field_name not in payload:
+        raise ValueError(f"missing required field: {field_name}")
+    return payload[field_name]

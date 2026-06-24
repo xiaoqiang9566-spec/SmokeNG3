@@ -14,11 +14,19 @@ class FakeSocket:
         self.sent_messages: list[str] = []
         self.responses = responses or []
         self.closed = False
+        self.recv_calls = 0
+        self.send_error: Exception | None = None
+        self.recv_error: Exception | None = None
 
     def send(self, payload: str) -> None:
+        if self.send_error is not None:
+            raise self.send_error
         self.sent_messages.append(payload)
 
     def recv(self) -> str:
+        self.recv_calls += 1
+        if self.recv_error is not None:
+            raise self.recv_error
         if not self.responses:
             raise AssertionError("recv() called without queued responses")
         return self.responses.pop(0)
@@ -94,6 +102,150 @@ def test_transport_matches_request_id_and_records_request_response() -> None:
             },
         },
     ]
+
+
+def test_transport_matches_string_request_id() -> None:
+    fake_socket = FakeSocket(
+        responses=[
+            json.dumps(
+                {
+                    "Type": "Response",
+                    "RequestId": "1",
+                    "Status": 200,
+                    "Uri": "suunto://SDS/ConnectedDevices",
+                    "Body": {"devices": ["TEST123"]},
+                }
+            )
+        ]
+    )
+    client = SdsTransportClient("ws://localhost:65534")
+    client._socket = fake_socket
+
+    response = client.send_and_wait(SdsRequest(method="GET", uri="suunto://SDS/ConnectedDevices"))
+
+    assert response.request_id == 1
+    assert response.body == {"devices": ["TEST123"]}
+
+
+def test_transport_buffers_crossed_responses_for_later_request() -> None:
+    fake_socket = FakeSocket(
+        responses=[
+            json.dumps(
+                {
+                    "Type": "Response",
+                    "RequestId": 2,
+                    "Status": 202,
+                    "Uri": "suunto://SDS/Second",
+                    "Body": {"second": True},
+                }
+            ),
+            json.dumps(
+                {
+                    "Type": "Response",
+                    "RequestId": 1,
+                    "Status": 200,
+                    "Uri": "suunto://SDS/First",
+                    "Body": {"first": True},
+                }
+            ),
+        ]
+    )
+    client = SdsTransportClient("ws://localhost:65534")
+    client._socket = fake_socket
+
+    first_response = client.send_and_wait(SdsRequest(method="GET", uri="suunto://SDS/First"))
+    recv_calls_after_first = fake_socket.recv_calls
+    second_response = client.send_and_wait(SdsRequest(method="GET", uri="suunto://SDS/Second"))
+
+    assert first_response.request_id == 1
+    assert first_response.body == {"first": True}
+    assert second_response.request_id == 2
+    assert second_response.body == {"second": True}
+    assert fake_socket.recv_calls == recv_calls_after_first
+
+
+def test_transport_allows_non_dict_body_values() -> None:
+    fake_socket = FakeSocket(
+        responses=[
+            json.dumps(
+                {
+                    "Type": "Response",
+                    "RequestId": 1,
+                    "Status": 200,
+                    "Uri": "suunto://SDS/Scalar",
+                    "Body": ["item", 2, False],
+                }
+            )
+        ]
+    )
+    client = SdsTransportClient("ws://localhost:65534")
+    client._socket = fake_socket
+
+    response = client.send_and_wait(
+        SdsRequest(method="POST", uri="suunto://SDS/Scalar", body=["item", 2, False])
+    )
+
+    assert json.loads(fake_socket.sent_messages[0])["Body"] == ["item", 2, False]
+    assert response.body == ["item", 2, False]
+
+
+@pytest.mark.parametrize(
+    ("payload", "message"),
+    [
+        ({}, "missing required field: Type"),
+        (
+            {"Type": "Event", "RequestId": 1, "Status": 200, "Uri": "suunto://SDS/Test", "Body": {}},
+            "invalid response type: Event",
+        ),
+        (
+            {"Type": "Response", "Status": 200, "Uri": "suunto://SDS/Test", "Body": {}},
+            "missing required field: RequestId",
+        ),
+        (
+            {"Type": "Response", "RequestId": 1, "Uri": "suunto://SDS/Test", "Body": {}},
+            "missing required field: Status",
+        ),
+        (
+            {"Type": "Response", "RequestId": 1, "Status": 200, "Body": {}},
+            "missing required field: Uri",
+        ),
+    ],
+)
+def test_transport_rejects_invalid_response_envelope(payload: dict[str, object], message: str) -> None:
+    with pytest.raises(ValueError, match=message):
+        SdsResponse.from_payload(payload)
+
+
+@pytest.mark.parametrize(
+    ("socket_setup", "expected_message"),
+    [
+        ("send_error", "send failed"),
+        ("recv_error", "receive failed"),
+        ("bad_json", "invalid JSON response"),
+        ("bad_payload", "missing required field: Status"),
+    ],
+)
+def test_transport_discards_socket_after_transport_failures(
+    socket_setup: str, expected_message: str
+) -> None:
+    fake_socket = FakeSocket()
+    if socket_setup == "send_error":
+        fake_socket.send_error = RuntimeError("boom")
+    elif socket_setup == "recv_error":
+        fake_socket.recv_error = RuntimeError("boom")
+    elif socket_setup == "bad_json":
+        fake_socket.responses = ["not-json"]
+    elif socket_setup == "bad_payload":
+        fake_socket.responses = [json.dumps({"Type": "Response", "RequestId": 1, "Uri": "suunto://SDS/Test"})]
+
+    client = SdsTransportClient("ws://localhost:65534")
+    client._socket = fake_socket
+
+    with pytest.raises(Exception, match=expected_message):
+        client.send_and_wait(SdsRequest(method="GET", uri="suunto://SDS/Test"))
+
+    assert fake_socket.closed is True
+    assert client._socket is None
 
 
 def test_transport_connects_and_closes_socket(monkeypatch: pytest.MonkeyPatch) -> None:
