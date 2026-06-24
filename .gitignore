@@ -10,5 +10,5 @@ dist/
 htmlcov/
 .Python
 .python-version
-artifacts/
+/artifacts/
 *.pyc
