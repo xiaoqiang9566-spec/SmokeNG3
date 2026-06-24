@@ -70,7 +70,8 @@ class SdsTransportClient:
                 raise ValueError("SDS response payload must be an object")
 
             if not self._matches_request_id(raw_payload, request_id):
-                self._pending_messages.append(raw_payload)
+                if self._is_bufferable_response(raw_payload):
+                    self._pending_messages.append(raw_payload)
                 continue
 
             self._record({"direction": "response", "payload": raw_payload})
@@ -99,6 +100,13 @@ class SdsTransportClient:
             return int(raw_message.get("RequestId", -1)) == request_id
         except (TypeError, ValueError):
             return False
+
+    def _is_bufferable_response(self, raw_message: dict[str, Any]) -> bool:
+        try:
+            SdsResponse.from_payload(raw_message)
+        except (TypeError, ValueError):
+            return False
+        return True
 
     def _discard_socket(self) -> None:
         self.close()

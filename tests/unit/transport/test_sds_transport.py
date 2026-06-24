@@ -164,6 +164,99 @@ def test_transport_buffers_crossed_responses_for_later_request() -> None:
     assert fake_socket.recv_calls == recv_calls_after_first
 
 
+def test_transport_does_not_buffer_out_of_order_event_messages() -> None:
+    fake_socket = FakeSocket(
+        responses=[
+            json.dumps(
+                {
+                    "Type": "Event",
+                    "RequestId": 2,
+                    "Uri": "suunto://SDS/Event",
+                    "Body": {"event": True},
+                }
+            ),
+            json.dumps(
+                {
+                    "Type": "Response",
+                    "RequestId": 1,
+                    "Status": 200,
+                    "Uri": "suunto://SDS/First",
+                    "Body": {"first": True},
+                }
+            ),
+            json.dumps(
+                {
+                    "Type": "Response",
+                    "RequestId": 2,
+                    "Status": 202,
+                    "Uri": "suunto://SDS/Second",
+                    "Body": {"second": True},
+                }
+            ),
+        ]
+    )
+    client = SdsTransportClient("ws://localhost:65534")
+    client._socket = fake_socket
+
+    first_response = client.send_and_wait(SdsRequest(method="GET", uri="suunto://SDS/First"))
+    recv_calls_after_first = fake_socket.recv_calls
+
+    assert first_response.request_id == 1
+    assert client._pending_messages == []
+
+    second_response = client.send_and_wait(SdsRequest(method="GET", uri="suunto://SDS/Second"))
+
+    assert second_response.request_id == 2
+    assert second_response.body == {"second": True}
+    assert fake_socket.recv_calls == recv_calls_after_first + 1
+
+
+def test_transport_does_not_buffer_messages_without_request_id() -> None:
+    fake_socket = FakeSocket(
+        responses=[
+            json.dumps(
+                {
+                    "Type": "Notification",
+                    "Uri": "suunto://SDS/Notification",
+                    "Body": {"message": "ignored"},
+                }
+            ),
+            json.dumps(
+                {
+                    "Type": "Response",
+                    "RequestId": 1,
+                    "Status": 200,
+                    "Uri": "suunto://SDS/First",
+                    "Body": {"first": True},
+                }
+            ),
+            json.dumps(
+                {
+                    "Type": "Response",
+                    "RequestId": 2,
+                    "Status": 202,
+                    "Uri": "suunto://SDS/Second",
+                    "Body": {"second": True},
+                }
+            ),
+        ]
+    )
+    client = SdsTransportClient("ws://localhost:65534")
+    client._socket = fake_socket
+
+    first_response = client.send_and_wait(SdsRequest(method="GET", uri="suunto://SDS/First"))
+    recv_calls_after_first = fake_socket.recv_calls
+
+    assert first_response.request_id == 1
+    assert client._pending_messages == []
+
+    second_response = client.send_and_wait(SdsRequest(method="GET", uri="suunto://SDS/Second"))
+
+    assert second_response.request_id == 2
+    assert second_response.body == {"second": True}
+    assert fake_socket.recv_calls == recv_calls_after_first + 1
+
+
 def test_transport_allows_non_dict_body_values() -> None:
     fake_socket = FakeSocket(
         responses=[
