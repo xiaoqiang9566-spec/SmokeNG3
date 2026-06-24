@@ -1,3 +1,4 @@
+import hashlib
 import json
 from datetime import datetime
 from pathlib import Path
@@ -45,7 +46,10 @@ def test_artifact_writer_normalizes_unsafe_directory_names_but_preserves_origina
         "framework_version": "0.1.0",
     }
 
-    case_dir = run_dir / "cases" / "suite-case-name-retry"
+    case_dir = run_dir / "cases" / (
+        "suite-case-name-retry-"
+        + hashlib.sha256("suite::case/name:retry".encode("utf-8")).hexdigest()[:8]
+    )
     assert case_dir.is_dir()
     assert json.loads((case_dir / "result.json").read_text(encoding="utf-8")) == {
         "case_name": "suite::case/name:retry",
@@ -76,6 +80,63 @@ def test_artifact_writer_defaults_to_repo_artifacts_directory(
     assert run_dir == tmp_path / "artifacts" / "run-20260624-100000-TEST123"
 
 
+def test_artifact_writer_uses_stable_unique_case_directories_for_normalization_collisions(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(writer_module, "datetime", _FrozenDateTime, raising=False)
+    writer = ArtifactWriter(tmp_path)
+    writer.start_run(
+        RunManifest(
+            device_serial="TEST123",
+            sds_url="ws://localhost:65534",
+            selected_tests=["tests/smoke/test_device_connection.py"],
+            framework_version="0.1.0",
+        )
+    )
+
+    first_case_name = "suite::case/name"
+    second_case_name = "suite??case//name"
+
+    writer.write_case_result(
+        CaseResult(
+            case_name=first_case_name,
+            status="failed",
+            error_type="assertion_failure",
+            evidence_refs=[],
+        )
+    )
+    writer.write_case_result(
+        CaseResult(
+            case_name=second_case_name,
+            status="error",
+            error_type="device_error",
+            evidence_refs=[],
+        )
+    )
+
+    case_dirs = sorted((writer.run_dir / "cases").iterdir())
+    expected_dir_names = {
+        "suite-case-name-" + hashlib.sha256(first_case_name.encode("utf-8")).hexdigest()[:8],
+        "suite-case-name-" + hashlib.sha256(second_case_name.encode("utf-8")).hexdigest()[:8],
+    }
+
+    assert len(case_dirs) == 2
+    assert case_dirs[0].name != case_dirs[1].name
+    assert {case_dir.name for case_dir in case_dirs} == expected_dir_names
+    assert json.loads((case_dirs[0] / "result.json").read_text(encoding="utf-8"))["case_name"] in {
+        first_case_name,
+        second_case_name,
+    }
+    assert json.loads((case_dirs[1] / "result.json").read_text(encoding="utf-8"))["case_name"] in {
+        first_case_name,
+        second_case_name,
+    }
+    assert {
+        json.loads((case_dir / "result.json").read_text(encoding="utf-8"))["case_name"]
+        for case_dir in case_dirs
+    } == {first_case_name, second_case_name}
+
+
 @pytest.mark.parametrize("status", ["skipped", "running"])
 def test_case_result_rejects_unknown_status(status: str) -> None:
     with pytest.raises(ValueError, match="unsupported case status"):
@@ -94,6 +155,27 @@ def test_case_result_rejects_unknown_error_type(error_type: str) -> None:
             case_name="alarm_case",
             status="failed",
             error_type=error_type,
+            evidence_refs=[],
+        )
+
+
+@pytest.mark.parametrize("status", ["failed", "error"])
+def test_case_result_requires_error_type_for_non_passing_status(status: str) -> None:
+    with pytest.raises(ValueError, match="requires error_type"):
+        CaseResult(
+            case_name="alarm_case",
+            status=status,
+            error_type=None,
+            evidence_refs=[],
+        )
+
+
+def test_case_result_rejects_error_type_for_passed_status() -> None:
+    with pytest.raises(ValueError, match="passed cases must not define error_type"):
+        CaseResult(
+            case_name="alarm_case",
+            status="passed",
+            error_type="assertion_failure",
             evidence_refs=[],
         )
 
@@ -197,7 +279,9 @@ def test_artifact_writer_persists_plan_manifest_and_case_outputs(
         "framework_version": "0.1.0",
     }
 
-    case_dir = run_dir / "cases" / "test_case"
+    case_dir = run_dir / "cases" / (
+        "test_case-" + hashlib.sha256("test_case".encode("utf-8")).hexdigest()[:8]
+    )
     assert json.loads((case_dir / "result.json").read_text(encoding="utf-8")) == {
         "case_name": "test_case",
         "status": "failed",

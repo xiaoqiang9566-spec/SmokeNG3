@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 from collections.abc import Mapping
@@ -69,9 +70,14 @@ class ArtifactWriter:
     def _case_dir(self, case_name: str) -> Path:
         if self.run_dir is None:
             raise RuntimeError("start_run() must be called before writing artifacts")
-        case_dir = self.run_dir / "cases" / self._safe_dir_name(case_name)
+        case_dir = self.run_dir / "cases" / self._case_dir_name(case_name)
         case_dir.mkdir(parents=True, exist_ok=True)
         return case_dir
+
+    def _case_dir_name(self, case_name: str) -> str:
+        normalized = self._safe_dir_name(case_name)
+        suffix = hashlib.sha256(case_name.encode("utf-8")).hexdigest()[:8]
+        return f"{normalized}-{suffix}"
 
     def _safe_dir_name(self, raw_name: str) -> str:
         normalized = _UNSAFE_PATH_CHARS.sub("-", raw_name).strip(".-")

@@ -42,6 +42,10 @@ class CaseResult:
             raise ValueError(f"unsupported case status: {self.status}")
         if self.error_type is not None and self.error_type not in ERROR_TYPES:
             raise ValueError(f"unsupported error_type: {self.error_type}")
+        if self.status == "passed" and self.error_type is not None:
+            raise ValueError("passed cases must not define error_type")
+        if self.status in {"failed", "error"} and self.error_type is None:
+            raise ValueError(f"{self.status} cases requires error_type")
 
     def to_dict(self) -> dict[str, object]:
         return asdict(self)
