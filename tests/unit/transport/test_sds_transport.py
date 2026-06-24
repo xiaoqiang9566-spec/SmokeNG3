@@ -310,16 +310,16 @@ def test_transport_rejects_invalid_response_envelope(payload: dict[str, object],
 
 
 @pytest.mark.parametrize(
-    ("socket_setup", "expected_message"),
+    ("socket_setup", "expected_exception", "expected_message"),
     [
-        ("send_error", "send failed"),
-        ("recv_error", "receive failed"),
-        ("bad_json", "invalid JSON response"),
-        ("bad_payload", "missing required field: Status"),
+        ("send_error", RuntimeError, "send failed"),
+        ("recv_error", RuntimeError, "receive failed"),
+        ("bad_json", ValueError, "invalid JSON response"),
+        ("bad_payload", ValueError, "missing required field: Status"),
     ],
 )
 def test_transport_discards_socket_after_transport_failures(
-    socket_setup: str, expected_message: str
+    socket_setup: str, expected_exception: type[Exception], expected_message: str
 ) -> None:
     fake_socket = FakeSocket()
     if socket_setup == "send_error":
@@ -334,11 +334,78 @@ def test_transport_discards_socket_after_transport_failures(
     client = SdsTransportClient("ws://localhost:65534")
     client._socket = fake_socket
 
-    with pytest.raises(Exception, match=expected_message):
+    with pytest.raises(expected_exception, match=expected_message):
         client.send_and_wait(SdsRequest(method="GET", uri="suunto://SDS/Test"))
 
     assert fake_socket.closed is True
     assert client._socket is None
+    assert client._pending_messages == []
+
+
+def test_transport_discards_buffered_messages_after_disconnect_before_reconnect(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    stale_socket = FakeSocket(
+        responses=[
+            json.dumps(
+                {
+                    "Type": "Response",
+                    "RequestId": 2,
+                    "Status": 202,
+                    "Uri": "suunto://SDS/Second",
+                    "Body": {"source": "stale"},
+                }
+            )
+        ]
+    )
+    stale_recv = stale_socket.recv
+    stale_recv_calls = 0
+
+    def recv_then_fail() -> str:
+        nonlocal stale_recv_calls
+        stale_recv_calls += 1
+        if stale_recv_calls == 1:
+            return stale_recv()
+        raise RuntimeError("boom")
+
+    stale_socket.recv = recv_then_fail  # type: ignore[method-assign]
+    fresh_socket = FakeSocket(
+        responses=[
+            json.dumps(
+                {
+                    "Type": "Response",
+                    "RequestId": 2,
+                    "Status": 200,
+                    "Uri": "suunto://SDS/Second",
+                    "Body": {"source": "fresh"},
+                }
+            )
+        ]
+    )
+    sockets = [stale_socket, fresh_socket]
+
+    def fake_create_connection(url: str, timeout: float) -> FakeSocket:
+        assert url == "ws://localhost:65534"
+        assert timeout == 10.0
+        if not sockets:
+            raise AssertionError("no sockets left to create")
+        return sockets.pop(0)
+
+    monkeypatch.setattr(client_module, "create_connection", fake_create_connection)
+
+    client = SdsTransportClient("ws://localhost:65534")
+
+    with pytest.raises(RuntimeError, match="receive failed"):
+        client.send_and_wait(SdsRequest(method="GET", uri="suunto://SDS/First"))
+
+    assert stale_socket.closed is True
+    assert client._pending_messages == []
+
+    response = client.send_and_wait(SdsRequest(method="GET", uri="suunto://SDS/Second"))
+
+    assert response.request_id == 2
+    assert response.body == {"source": "fresh"}
+    assert fresh_socket.recv_calls == 1
 
 
 def test_transport_connects_and_closes_socket(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -352,9 +419,11 @@ def test_transport_connects_and_closes_socket(monkeypatch: pytest.MonkeyPatch) -
     monkeypatch.setattr(client_module, "create_connection", fake_create_connection)
 
     client = SdsTransportClient("ws://localhost:65534")
+    client._pending_messages.append({"RequestId": 99})
     client.connect()
     client.close()
 
     assert created == [("ws://localhost:65534", 10.0)]
     assert fake_socket.closed is True
     assert client._socket is None
+    assert client._pending_messages == []

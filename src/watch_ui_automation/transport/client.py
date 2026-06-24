@@ -29,6 +29,7 @@ class SdsTransportClient:
         if self._socket is not None:
             self._socket.close()
             self._socket = None
+        self._pending_messages.clear()
 
     def send_and_wait(self, request: SdsRequest) -> SdsResponse:
         self.connect()
