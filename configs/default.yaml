@@ -11,7 +11,7 @@ artifacts:
   root_dir: artifacts
 
 resources:
-  current_page_uri: suunto://REPLACE_ME/System/UI/CurrentPage
-  current_widget_uri: suunto://REPLACE_ME/System/UI/CurrentWidget
-  workout_state_uri: suunto://REPLACE_ME/Sport/Workout/State
-  settings_focus_uri: suunto://REPLACE_ME/System/UI/Settings/FocusedItem
+  current_page_uri: suunto://{serial}/System/UI/CurrentPage
+  current_widget_uri: suunto://{serial}/System/UI/CurrentWidget
+  workout_state_uri: suunto://{serial}/Sport/Workout/State
+  settings_focus_uri: suunto://{serial}/System/UI/Settings/FocusedItem
