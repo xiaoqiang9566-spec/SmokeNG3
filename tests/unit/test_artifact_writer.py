@@ -1,29 +1,161 @@
 import json
+from datetime import datetime
 from pathlib import Path
 
+import pytest
+
+import watch_ui_automation.artifacts.writer as writer_module
 from watch_ui_automation.artifacts.writer import ArtifactWriter
 from watch_ui_automation.models import CaseResult, RunManifest
 
 
-def test_run_manifest_and_case_artifacts_are_written(tmp_path: Path) -> None:
+class _FrozenDateTime:
+    @staticmethod
+    def utcnow() -> datetime:
+        return datetime(2026, 6, 24, 10, 0, 0)
+
+
+def test_artifact_writer_normalizes_unsafe_directory_names_but_preserves_original_values(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(writer_module, "datetime", _FrozenDateTime, raising=False)
+
     writer = ArtifactWriter(tmp_path)
     manifest = RunManifest(
-        run_id="run-001",
-        suite_name="smoke",
-        device_serial="TEST123",
-        started_at="2026-06-24T10:00:00Z",
+        device_serial="device::A/01",
+        sds_url="ws://localhost:65534",
+        selected_tests=["tests/smoke/test_device_connection.py"],
+        framework_version="0.1.0",
     )
     case_result = CaseResult(
-        case_id="case-001",
+        case_name="suite::case/name:retry",
         status="failed",
-        started_at="2026-06-24T10:01:00Z",
-        finished_at="2026-06-24T10:02:00Z",
-        error_message="Expected widget title to match",
+        error_type="assertion_failure",
+        evidence_refs=[],
+    )
+
+    run_dir = writer.start_run(manifest)
+    writer.write_case_result(case_result)
+
+    assert run_dir == tmp_path / "run-20260624-100000-device-A-01"
+    assert json.loads((run_dir / "run_manifest.json").read_text(encoding="utf-8")) == {
+        "device_serial": "device::A/01",
+        "sds_url": "ws://localhost:65534",
+        "selected_tests": ["tests/smoke/test_device_connection.py"],
+        "framework_version": "0.1.0",
+    }
+
+    case_dir = run_dir / "cases" / "suite-case-name-retry"
+    assert case_dir.is_dir()
+    assert json.loads((case_dir / "result.json").read_text(encoding="utf-8")) == {
+        "case_name": "suite::case/name:retry",
+        "status": "failed",
+        "error_type": "assertion_failure",
+        "evidence_refs": [],
+    }
+
+
+def test_artifact_writer_defaults_to_repo_artifacts_directory(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(writer_module, "datetime", _FrozenDateTime, raising=False)
+
+    writer = ArtifactWriter()
+    monkeypatch.chdir(tmp_path)
+
+    run_dir = writer.start_run(
+        RunManifest(
+            device_serial="TEST123",
+            sds_url="ws://localhost:65534",
+            selected_tests=["tests/smoke/test_device_connection.py"],
+            framework_version="0.1.0",
+        )
+    )
+
+    assert writer.root_dir == Path("artifacts")
+    assert run_dir == tmp_path / "artifacts" / "run-20260624-100000-TEST123"
+
+
+@pytest.mark.parametrize("status", ["skipped", "running"])
+def test_case_result_rejects_unknown_status(status: str) -> None:
+    with pytest.raises(ValueError, match="unsupported case status"):
+        CaseResult(
+            case_name="alarm_case",
+            status=status,
+            error_type=None,
+            evidence_refs=[],
+        )
+
+
+@pytest.mark.parametrize("error_type", ["bad:value", "with/slash"])
+def test_case_result_rejects_unknown_error_type(error_type: str) -> None:
+    with pytest.raises(ValueError, match="unsupported error_type"):
+        CaseResult(
+            case_name="alarm_case",
+            status="failed",
+            error_type=error_type,
+            evidence_refs=[],
+        )
+
+
+def test_artifact_writer_rejects_non_mapping_payloads(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(writer_module, "datetime", _FrozenDateTime, raising=False)
+    writer = ArtifactWriter(tmp_path)
+    writer.start_run(
+        RunManifest(
+            device_serial="TEST123",
+            sds_url="ws://localhost:65534",
+            selected_tests=["tests/smoke/test_device_connection.py"],
+            framework_version="0.1.0",
+        )
+    )
+
+    with pytest.raises(TypeError, match="payload must be a mapping"):
+        writer.write_step("test_case", ["not", "a", "mapping"])  # type: ignore[arg-type]
+
+
+def test_artifact_writer_rejects_non_json_serializable_payloads(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(writer_module, "datetime", _FrozenDateTime, raising=False)
+    writer = ArtifactWriter(tmp_path)
+    writer.start_run(
+        RunManifest(
+            device_serial="TEST123",
+            sds_url="ws://localhost:65534",
+            selected_tests=["tests/smoke/test_device_connection.py"],
+            framework_version="0.1.0",
+        )
+    )
+
+    with pytest.raises(TypeError, match="payload must be JSON serializable"):
+        writer.write_snapshot("test_case", {"bad": object()})
+
+
+def test_artifact_writer_persists_plan_manifest_and_case_outputs(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(writer_module, "datetime", _FrozenDateTime, raising=False)
+
+    writer = ArtifactWriter(tmp_path)
+    manifest = RunManifest(
+        device_serial="TEST123",
+        sds_url="ws://localhost:65534",
+        selected_tests=["tests/smoke/test_device_connection.py"],
+        framework_version="0.1.0",
+    )
+    case_result = CaseResult(
+        case_name="test_case",
+        status="failed",
+        error_type="assertion_failure",
+        evidence_refs=["steps.jsonl:1", "state_snapshot.json"],
     )
 
     run_dir = writer.start_run(manifest)
     writer.write_step(
-        "case-001",
+        "test_case",
         {
             "timestamp": "2026-06-24T10:01:05Z",
             "name": "open widget",
@@ -31,7 +163,7 @@ def test_run_manifest_and_case_artifacts_are_written(tmp_path: Path) -> None:
         },
     )
     writer.write_transport(
-        "case-001",
+        "test_case",
         {
             "timestamp": "2026-06-24T10:01:06Z",
             "request": {"uri": "suunto://watch/page"},
@@ -39,44 +171,44 @@ def test_run_manifest_and_case_artifacts_are_written(tmp_path: Path) -> None:
         },
     )
     writer.write_assertion(
-        "case-001",
+        "test_case",
         {
             "timestamp": "2026-06-24T10:01:07Z",
             "name": "widget title",
-            "passed": False,
+            "status": "failed",
         },
     )
     writer.write_snapshot(
-        "case-001",
+        "test_case",
         {"page": "Training", "widget": "Timer", "focused_item": "Start"},
     )
     writer.write_case_result(case_result)
     writer.write_failure_summary(
-        "case-001",
+        "test_case",
         "# Failure Summary\n\nExpected widget title to match\n",
     )
 
-    assert run_dir == tmp_path / "run-001"
+    assert run_dir == tmp_path / "run-20260624-100000-TEST123"
+    assert (run_dir / "cases").is_dir()
     assert json.loads((run_dir / "run_manifest.json").read_text(encoding="utf-8")) == {
-        "run_id": "run-001",
-        "suite_name": "smoke",
         "device_serial": "TEST123",
-        "started_at": "2026-06-24T10:00:00Z",
+        "sds_url": "ws://localhost:65534",
+        "selected_tests": ["tests/smoke/test_device_connection.py"],
+        "framework_version": "0.1.0",
     }
 
-    case_dir = run_dir / "cases" / "case-001"
+    case_dir = run_dir / "cases" / "test_case"
     assert json.loads((case_dir / "result.json").read_text(encoding="utf-8")) == {
-        "case_id": "case-001",
+        "case_name": "test_case",
         "status": "failed",
-        "started_at": "2026-06-24T10:01:00Z",
-        "finished_at": "2026-06-24T10:02:00Z",
-        "error_message": "Expected widget title to match",
+        "error_type": "assertion_failure",
+        "evidence_refs": ["steps.jsonl:1", "state_snapshot.json"],
     }
-    assert (case_dir / "state_snapshot.json").read_text(encoding="utf-8") == json.dumps(
-        {"page": "Training", "widget": "Timer", "focused_item": "Start"},
-        ensure_ascii=False,
-        indent=2,
-    ) + "\n"
+    assert json.loads((case_dir / "state_snapshot.json").read_text(encoding="utf-8")) == {
+        "page": "Training",
+        "widget": "Timer",
+        "focused_item": "Start",
+    }
     assert (case_dir / "failure_summary.md").read_text(encoding="utf-8").startswith(
         "# Failure Summary"
     )
@@ -107,35 +239,53 @@ def test_run_manifest_and_case_artifacts_are_written(tmp_path: Path) -> None:
         {
             "timestamp": "2026-06-24T10:01:07Z",
             "name": "widget title",
-            "passed": False,
+            "status": "failed",
         }
     ]
 
 
-def test_model_to_dict_preserves_optional_fields() -> None:
+def test_start_run_rejects_existing_plan_run_directory(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(writer_module, "datetime", _FrozenDateTime, raising=False)
     manifest = RunManifest(
-        run_id="run-002",
-        suite_name="regression",
+        device_serial="TEST123",
+        sds_url="ws://localhost:65534",
+        selected_tests=["tests/smoke/test_device_connection.py"],
+        framework_version="0.1.0",
+    )
+    existing_run_dir = tmp_path / "run-20260624-100000-TEST123"
+    existing_run_dir.mkdir(parents=True)
+
+    writer = ArtifactWriter(tmp_path)
+
+    with pytest.raises(FileExistsError):
+        writer.start_run(manifest)
+
+
+def test_plan_models_to_dict_match_expected_fields() -> None:
+    manifest = RunManifest(
         device_serial="TEST456",
-        started_at="2026-06-24T11:00:00Z",
+        sds_url="ws://localhost:65534",
+        selected_tests=["tests/regression/test_alarm.py"],
+        framework_version="0.1.0",
     )
     case_result = CaseResult(
-        case_id="case-002",
+        case_name="alarm_case",
         status="passed",
-        started_at="2026-06-24T11:01:00Z",
-        finished_at="2026-06-24T11:01:30Z",
+        error_type=None,
+        evidence_refs=[],
     )
 
     assert manifest.to_dict() == {
-        "run_id": "run-002",
-        "suite_name": "regression",
         "device_serial": "TEST456",
-        "started_at": "2026-06-24T11:00:00Z",
+        "sds_url": "ws://localhost:65534",
+        "selected_tests": ["tests/regression/test_alarm.py"],
+        "framework_version": "0.1.0",
     }
     assert case_result.to_dict() == {
-        "case_id": "case-002",
+        "case_name": "alarm_case",
         "status": "passed",
-        "started_at": "2026-06-24T11:01:00Z",
-        "finished_at": "2026-06-24T11:01:30Z",
-        "error_message": None,
+        "error_type": None,
+        "evidence_refs": [],
     }

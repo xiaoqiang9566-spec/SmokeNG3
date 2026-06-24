@@ -1,3 +1,3 @@
-from watch_ui_automation.artifacts.writer import ArtifactWriter
+from .writer import DEFAULT_ARTIFACT_ROOT, ArtifactWriter
 
-__all__ = ["ArtifactWriter"]
+__all__ = ["ArtifactWriter", "DEFAULT_ARTIFACT_ROOT"]
