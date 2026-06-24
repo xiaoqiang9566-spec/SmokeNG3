@@ -1,0 +1,17 @@
+device:
+  serial: REPLACE_ME
+  sds_url: ws://localhost:65534
+
+timeouts:
+  request_seconds: 10
+  settle_seconds: 1.0
+  poll_interval_seconds: 0.2
+
+artifacts:
+  root_dir: artifacts
+
+resources:
+  current_page_uri: suunto://REPLACE_ME/System/UI/CurrentPage
+  current_widget_uri: suunto://REPLACE_ME/System/UI/CurrentWidget
+  workout_state_uri: suunto://REPLACE_ME/Sport/Workout/State
+  settings_focus_uri: suunto://REPLACE_ME/System/UI/Settings/FocusedItem
