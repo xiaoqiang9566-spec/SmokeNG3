@@ -28,11 +28,11 @@ def test_package_bootstrap_loads_yaml_config(tmp_path: Path) -> None:
                 "input:",
                 "  tap_center_x: 233",
                 "  tap_center_y: 233",
-                "  swipe_left_start_x: 320",
-                "  swipe_left_end_x: 120",
+                "  swipe_left_start_x: 420",
+                "  swipe_left_end_x: 46",
                 "  swipe_horizontal_y: 233",
                 "  swipe_up_x: 233",
-                "  swipe_up_start_y: 320",
+                "  swipe_up_start_y: 360",
                 "  swipe_up_end_y: 120",
                 "navigation:",
                 "  open_settings:",
@@ -40,11 +40,11 @@ def test_package_bootstrap_loads_yaml_config(tmp_path: Path) -> None:
                 "  open_widget:",
                 "    - swipe_left",
                 "  open_workout:",
-                "    - press_top",
+                "    - press_top_left",
                 "  go_back:",
-                "    - press_bottom",
+                "    - press_bottom_left",
                 "  workout_pause_resume:",
-                "    - press_middle",
+                "    - press_top",
             ]
         ),
         encoding="utf-8",
@@ -82,11 +82,11 @@ def test_package_bootstrap_loads_input_and_navigation_config(tmp_path: Path) -> 
                 "input:",
                 "  tap_center_x: 233",
                 "  tap_center_y: 233",
-                "  swipe_left_start_x: 320",
-                "  swipe_left_end_x: 120",
+                "  swipe_left_start_x: 420",
+                "  swipe_left_end_x: 46",
                 "  swipe_horizontal_y: 233",
                 "  swipe_up_x: 233",
-                "  swipe_up_start_y: 320",
+                "  swipe_up_start_y: 360",
                 "  swipe_up_end_y: 120",
                 "navigation:",
                 "  open_settings:",
@@ -94,11 +94,11 @@ def test_package_bootstrap_loads_input_and_navigation_config(tmp_path: Path) -> 
                 "  open_widget:",
                 "    - swipe_left",
                 "  open_workout:",
-                "    - press_top",
+                "    - press_top_left",
                 "  go_back:",
-                "    - press_bottom",
+                "    - press_bottom_left",
                 "  workout_pause_resume:",
-                "    - press_middle",
+                "    - press_top",
             ]
         ),
         encoding="utf-8",
@@ -108,6 +108,19 @@ def test_package_bootstrap_loads_input_and_navigation_config(tmp_path: Path) -> 
 
     assert config.input.tap_center_x == 233
     assert config.navigation.open_widget == ["swipe_left"]
+
+
+def test_default_config_matches_task4_defaults() -> None:
+    config = load_project_config(Path("configs/default.yaml"))
+
+    assert config.input.tap_center_x == 233
+    assert config.input.swipe_left_start_x == 420
+    assert config.input.swipe_left_end_x == 46
+    assert config.input.swipe_up_start_y == 360
+    assert config.navigation.open_widget == ["swipe_left"]
+    assert config.navigation.open_workout == ["press_top_left"]
+    assert config.navigation.go_back == ["press_bottom_left"]
+    assert config.navigation.workout_pause_resume == ["press_top"]
 
 
 @pytest.mark.parametrize(

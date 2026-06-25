@@ -45,11 +45,11 @@ def input_profile() -> InputConfig:
     return InputConfig(
         tap_center_x=233,
         tap_center_y=233,
-        swipe_left_start_x=320,
-        swipe_left_end_x=120,
+        swipe_left_start_x=420,
+        swipe_left_end_x=46,
         swipe_horizontal_y=233,
         swipe_up_x=233,
-        swipe_up_start_y=320,
+        swipe_up_start_y=360,
         swipe_up_end_y=120,
     )
 
@@ -59,9 +59,9 @@ def navigation() -> NavigationConfig:
     return NavigationConfig(
         open_settings=["press_middle"],
         open_widget=["swipe_left"],
-        open_workout=["press_top"],
-        go_back=["press_bottom"],
-        workout_pause_resume=["press_middle"],
+        open_workout=["press_top_left"],
+        go_back=["press_bottom_left"],
+        workout_pause_resume=["press_top"],
     )
 
 
