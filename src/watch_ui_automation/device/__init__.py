@@ -1,3 +1,3 @@
-from watch_ui_automation.device.controller import DeviceController
+from watch_ui_automation.device.controller import DeviceController, SdsDeviceController
 
-__all__ = ["DeviceController"]
+__all__ = ["SdsDeviceController", "DeviceController"]

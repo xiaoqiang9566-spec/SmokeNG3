@@ -5,6 +5,21 @@ from typing import Union
 
 import yaml
 
+SUPPORTED_NAVIGATION_ACTIONS = frozenset(
+    {
+        "press_top",
+        "press_middle",
+        "press_bottom",
+        "press_top_left",
+        "press_bottom_left",
+        "tap_center",
+        "swipe_left",
+        "swipe_up",
+        "rotate_knob_up",
+        "rotate_knob_down",
+    }
+)
+
 
 @dataclass(frozen=True)
 class DeviceConfig:
@@ -93,6 +108,20 @@ def _build_section(config_cls: type, payload: Mapping[str, object], name: str):
         raise ValueError(f"invalid section '{name}': {exc}") from exc
 
 
+def _validate_navigation_config(navigation: NavigationConfig) -> NavigationConfig:
+    for field_name, actions in navigation.__dict__.items():
+        if not isinstance(actions, list):
+            raise ValueError(f"navigation.{field_name} must be a list")
+        for action_name in actions:
+            if not isinstance(action_name, str):
+                raise ValueError(f"navigation.{field_name} action must be a string")
+            if action_name not in SUPPORTED_NAVIGATION_ACTIONS:
+                raise ValueError(
+                    f"invalid navigation action: {action_name} in navigation.{field_name}"
+                )
+    return navigation
+
+
 def load_project_config(path: Union[str, Path]) -> ProjectConfig:
     raw = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
     if raw is None:
@@ -115,5 +144,7 @@ def load_project_config(path: Union[str, Path]) -> ProjectConfig:
         artifacts=_build_section(ArtifactConfig, artifact_raw, "artifacts"),
         resources=_build_section(ResourceConfig, resources, "resources"),
         input=_build_section(InputConfig, input_raw, "input"),
-        navigation=_build_section(NavigationConfig, navigation_raw, "navigation"),
+        navigation=_validate_navigation_config(
+            _build_section(NavigationConfig, navigation_raw, "navigation")
+        ),
     )

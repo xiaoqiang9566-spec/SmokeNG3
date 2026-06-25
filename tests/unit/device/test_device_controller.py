@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 from watch_ui_automation.config import InputConfig, NavigationConfig, ResourceConfig
-from watch_ui_automation.device import DeviceController
+from watch_ui_automation.device import DeviceController, SdsDeviceController
 from watch_ui_automation.transport import SdsRequest, SdsResponse
 
 
@@ -71,7 +71,7 @@ def build_controller(
     input_profile: InputConfig,
     navigation: NavigationConfig,
 ) -> DeviceController:
-    return DeviceController(
+    return SdsDeviceController(
         serial="TEST123",
         transport=transport,
         resources=resources,
@@ -140,11 +140,15 @@ def test_press_middle_sends_button_press_request(
     assert transport.requests[0].method == "PUT"
     assert transport.requests[0].uri == "suunto://TEST123/Ui/Test/SimulatedButtonPress"
     assert transport.requests[0].body == {
-        "value": {"id": "Middle", "duration": 0.8}
+        "value": {"id": 1, "duration": 0.8}
     }
 
 
-def test_tap_center_sends_touch_event(
+def test_device_module_exports_backward_compatible_alias() -> None:
+    assert DeviceController is SdsDeviceController
+
+
+def test_tap_center_sends_numeric_touch_sequence(
     resources: ResourceConfig,
     input_profile: InputConfig,
     navigation: NavigationConfig,
@@ -154,14 +158,38 @@ def test_tap_center_sends_touch_event(
 
     controller.tap_center()
 
-    assert transport.requests[0].method == "PUT"
-    assert transport.requests[0].uri == "suunto://TEST123/Device/UserInteraction/Touch/Event"
+    assert [request.method for request in transport.requests] == ["PUT", "PUT", "PUT", "PUT"]
+    assert [request.uri for request in transport.requests] == [
+        "suunto://TEST123/Device/UserInteraction/Touch/Event",
+        "suunto://TEST123/Device/UserInteraction/Touch/Event",
+        "suunto://TEST123/Device/UserInteraction/Touch/Event",
+        "suunto://TEST123/Device/UserInteraction/Touch/Event",
+    ]
+    assert [request.body["type"] for request in transport.requests] == [1, 3, 6, 99]
     assert transport.requests[0].body == {
         "x": 233,
         "y": 233,
         "data": {"x": 0.0, "y": 0.0},
-        "type": "tap",
+        "type": 1,
     }
+
+
+def test_swipe_left_sends_numeric_touch_sequence(
+    resources: ResourceConfig,
+    input_profile: InputConfig,
+    navigation: NavigationConfig,
+) -> None:
+    transport = FakeTransport()
+    controller = build_controller(transport, resources, input_profile, navigation)
+
+    controller.swipe_left()
+
+    assert [request.body["type"] for request in transport.requests] == [1, 2, 3, 99]
+    assert transport.requests[0].body["x"] == 420
+    assert transport.requests[0].body["y"] == 233
+    assert transport.requests[1].body["x"] == 46
+    assert transport.requests[1].body["type"] == 2
+    assert transport.requests[3].body["type"] == 99
 
 
 def test_rotate_knob_up_reads_time_before_sending_knob_event(
@@ -170,7 +198,7 @@ def test_rotate_knob_up_reads_time_before_sending_knob_event(
     navigation: NavigationConfig,
 ) -> None:
     transport = FakeTransport(
-        responses={"suunto://TEST123/Dev/Time": {"timestamp": 1234567890}}
+        responses={"suunto://TEST123/Dev/Time": {"Content": 123456}}
     )
     controller = build_controller(transport, resources, input_profile, navigation)
 
@@ -182,6 +210,4 @@ def test_rotate_knob_up_reads_time_before_sending_knob_event(
     ]
     assert transport.requests[0].method == "GET"
     assert transport.requests[1].method == "PUT"
-    assert transport.requests[1].body == {
-        "event": {"angle": 15, "timestamp": 1234567890}
-    }
+    assert transport.requests[1].body == {"event": {"angle": 15, "timestamp": 123456}}

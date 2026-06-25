@@ -12,8 +12,20 @@ BUTTON_URI_TEMPLATE = "suunto://{serial}/Ui/Test/SimulatedButtonPress"
 TOUCH_URI_TEMPLATE = "suunto://{serial}/Device/UserInteraction/Touch/Event"
 KNOB_URI_TEMPLATE = "suunto://{serial}/Device/UserInteraction/Knob/Event"
 
+BUTTON_TOP = 0
+BUTTON_MIDDLE = 1
+BUTTON_BOTTOM = 2
+BUTTON_TOP_LEFT = 3
+BUTTON_BOTTOM_LEFT = 4
 
-class DeviceController:
+TOUCHDOWN = 1
+TOUCHMOVE = 2
+LIFTOFF = 3
+CLICK = 6
+IDLE = 99
+
+
+class SdsDeviceController:
     def __init__(
         self,
         serial: str,
@@ -42,39 +54,80 @@ class DeviceController:
         return response.body
 
     def press_top(self, duration: float = 0.8) -> None:
-        self._press_button("Top", duration)
+        self._press_button(BUTTON_TOP, duration)
 
     def press_middle(self, duration: float = 0.8) -> None:
-        self._press_button("Middle", duration)
+        self._press_button(BUTTON_MIDDLE, duration)
 
     def press_bottom(self, duration: float = 0.8) -> None:
-        self._press_button("Bottom", duration)
+        self._press_button(BUTTON_BOTTOM, duration)
 
     def press_top_left(self, duration: float = 0.8) -> None:
-        self._press_button("TopLeft", duration)
+        self._press_button(BUTTON_TOP_LEFT, duration)
 
     def press_bottom_left(self, duration: float = 0.8) -> None:
-        self._press_button("BottomLeft", duration)
+        self._press_button(BUTTON_BOTTOM_LEFT, duration)
 
     def tap_center(self) -> None:
-        self._touch(
-            self.input_profile.tap_center_x,
-            self.input_profile.tap_center_y,
-            "tap",
+        self._touch_sequence(
+            [
+                (self.input_profile.tap_center_x, self.input_profile.tap_center_y, TOUCHDOWN),
+                (self.input_profile.tap_center_x, self.input_profile.tap_center_y, LIFTOFF),
+                (self.input_profile.tap_center_x, self.input_profile.tap_center_y, CLICK),
+                (self.input_profile.tap_center_x, self.input_profile.tap_center_y, IDLE),
+            ]
         )
 
     def swipe_left(self) -> None:
-        self._touch(
-            self.input_profile.swipe_left_start_x,
-            self.input_profile.swipe_horizontal_y,
-            "swipe_left",
+        self._touch_sequence(
+            [
+                (
+                    self.input_profile.swipe_left_start_x,
+                    self.input_profile.swipe_horizontal_y,
+                    TOUCHDOWN,
+                ),
+                (
+                    self.input_profile.swipe_left_end_x,
+                    self.input_profile.swipe_horizontal_y,
+                    TOUCHMOVE,
+                ),
+                (
+                    self.input_profile.swipe_left_end_x,
+                    self.input_profile.swipe_horizontal_y,
+                    LIFTOFF,
+                ),
+                (
+                    self.input_profile.swipe_left_end_x,
+                    self.input_profile.swipe_horizontal_y,
+                    IDLE,
+                ),
+            ]
         )
 
     def swipe_up(self) -> None:
-        self._touch(
-            self.input_profile.swipe_up_x,
-            self.input_profile.swipe_up_start_y,
-            "swipe_up",
+        self._touch_sequence(
+            [
+                (
+                    self.input_profile.swipe_up_x,
+                    self.input_profile.swipe_up_start_y,
+                    TOUCHDOWN,
+                ),
+                (
+                    self.input_profile.swipe_up_x,
+                    self.input_profile.swipe_up_end_y,
+                    TOUCHMOVE,
+                ),
+                (
+                    self.input_profile.swipe_up_x,
+                    self.input_profile.swipe_up_end_y,
+                    LIFTOFF,
+                ),
+                (
+                    self.input_profile.swipe_up_x,
+                    self.input_profile.swipe_up_end_y,
+                    IDLE,
+                ),
+            ]
         )
 
     def rotate_knob_up(self, angle: int = 15) -> None:
@@ -97,7 +150,7 @@ class DeviceController:
         for action_name in actions:
             self.perform_action(action_name)
 
-    def _press_button(self, button_id: str, duration: float) -> None:
+    def _press_button(self, button_id: int, duration: float) -> None:
         self.transport.send_and_wait(
             SdsRequest(
                 method="PUT",
@@ -106,7 +159,7 @@ class DeviceController:
             )
         )
 
-    def _touch(self, x: int, y: int, event_type: str) -> None:
+    def _touch(self, x: int, y: int, event_type: int) -> None:
         self.transport.send_and_wait(
             SdsRequest(
                 method="PUT",
@@ -120,11 +173,20 @@ class DeviceController:
             )
         )
 
+    def _touch_sequence(self, events: Sequence[tuple[int, int, int]]) -> None:
+        for x, y, event_type in events:
+            self._touch(x, y, event_type)
+
     def _read_timestamp(self) -> Any:
         payload = self.read_json(DEVICE_TIME_URI_TEMPLATE.format(serial=self.serial))
         if isinstance(payload, Mapping):
+            if "Content" in payload:
+                return payload["Content"]
             if "timestamp" in payload:
                 return payload["timestamp"]
             if "Timestamp" in payload:
                 return payload["Timestamp"]
         return payload
+
+
+DeviceController = SdsDeviceController
