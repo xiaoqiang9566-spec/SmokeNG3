@@ -8,26 +8,45 @@ from watch_ui_automation.transport import SdsRequest, SdsResponse
 
 
 class FakeTransport:
-    def __init__(self, responses: dict[str, object] | None = None) -> None:
+    def __init__(
+        self,
+        responses: dict[str, object | list[object]] | None = None,
+        statuses: dict[str, int | list[int]] | None = None,
+    ) -> None:
         self.requests: list[SdsRequest] = []
         self.responses = responses or {}
+        self.statuses = statuses or {}
 
     def send_and_wait(self, request: SdsRequest) -> SdsResponse:
         self.requests.append(request)
-        body = self.responses.get(request.uri, {})
+        body = self._consume(self.responses, request.uri, {})
+        status = self._consume(self.statuses, request.uri, 200)
         return SdsResponse(
             request_id=len(self.requests),
-            status=200,
+            status=status,
             uri=request.uri,
             body=body,
             raw={
                 "Type": "Response",
                 "RequestId": len(self.requests),
-                "Status": 200,
+                "Status": status,
                 "Uri": request.uri,
                 "Body": body,
             },
         )
+
+    def _consume(
+        self,
+        source: dict[str, object | list[object] | int | list[int]],
+        uri: str,
+        default: object,
+    ) -> object:
+        value = source.get(uri, default)
+        if isinstance(value, list):
+            if not value:
+                return default
+            return value.pop(0)
+        return value
 
 
 @pytest.fixture
@@ -110,6 +129,21 @@ def test_assert_connected_raises_when_serial_is_missing(
         controller.assert_connected()
 
 
+def test_assert_connected_raises_on_transport_error_status(
+    resources: ResourceConfig,
+    input_profile: InputConfig,
+    navigation: NavigationConfig,
+) -> None:
+    transport = FakeTransport(
+        responses={"suunto://SDS/ConnectedDevices": {"Devices": ["TEST123"]}},
+        statuses={"suunto://SDS/ConnectedDevices": 503},
+    )
+    controller = build_controller(transport, resources, input_profile, navigation)
+
+    with pytest.raises(RuntimeError, match="ConnectedDevices"):
+        controller.assert_connected()
+
+
 def test_read_json_reads_resource_body(
     resources: ResourceConfig,
     input_profile: InputConfig,
@@ -142,6 +176,20 @@ def test_press_middle_sends_button_press_request(
     assert transport.requests[0].body == {
         "value": {"id": 1, "duration": 0.8}
     }
+
+
+def test_press_middle_raises_on_transport_error_status(
+    resources: ResourceConfig,
+    input_profile: InputConfig,
+    navigation: NavigationConfig,
+) -> None:
+    transport = FakeTransport(
+        statuses={"suunto://TEST123/Ui/Test/SimulatedButtonPress": 500}
+    )
+    controller = build_controller(transport, resources, input_profile, navigation)
+
+    with pytest.raises(RuntimeError, match="SimulatedButtonPress"):
+        controller.press_middle(duration=0.8)
 
 
 def test_device_module_exports_backward_compatible_alias() -> None:
@@ -184,12 +232,54 @@ def test_swipe_left_sends_numeric_touch_sequence(
 
     controller.swipe_left()
 
-    assert [request.body["type"] for request in transport.requests] == [1, 2, 3, 99]
+    assert [request.body["type"] for request in transport.requests] == [1, 2, 5, 2, 3, 8, 99]
     assert transport.requests[0].body["x"] == 420
     assert transport.requests[0].body["y"] == 233
-    assert transport.requests[1].body["x"] == 46
-    assert transport.requests[1].body["type"] == 2
-    assert transport.requests[3].body["type"] == 99
+    assert transport.requests[2].body["type"] == 5
+    assert transport.requests[5].body["type"] == 8
+    assert transport.requests[6].body == {
+        "x": 0,
+        "y": 0,
+        "data": {"x": 0.0, "y": 0.0},
+        "type": 99,
+    }
+
+
+def test_swipe_up_sends_numeric_touch_sequence(
+    resources: ResourceConfig,
+    input_profile: InputConfig,
+    navigation: NavigationConfig,
+) -> None:
+    transport = FakeTransport()
+    controller = build_controller(transport, resources, input_profile, navigation)
+
+    controller.swipe_up()
+
+    assert [request.body["type"] for request in transport.requests] == [1, 2, 5, 2, 3, 8, 99]
+    assert transport.requests[0].body["x"] == 233
+    assert transport.requests[0].body["y"] == 360
+    assert transport.requests[2].body["type"] == 5
+    assert transport.requests[5].body["type"] == 8
+    assert transport.requests[6].body == {
+        "x": 0,
+        "y": 0,
+        "data": {"x": 0.0, "y": 0.0},
+        "type": 99,
+    }
+
+
+def test_tap_center_raises_on_touch_transport_error_status(
+    resources: ResourceConfig,
+    input_profile: InputConfig,
+    navigation: NavigationConfig,
+) -> None:
+    transport = FakeTransport(
+        statuses={"suunto://TEST123/Device/UserInteraction/Touch/Event": [500]}
+    )
+    controller = build_controller(transport, resources, input_profile, navigation)
+
+    with pytest.raises(RuntimeError, match="Touch/Event"):
+        controller.tap_center()
 
 
 def test_rotate_knob_up_reads_time_before_sending_knob_event(
@@ -211,3 +301,44 @@ def test_rotate_knob_up_reads_time_before_sending_knob_event(
     assert transport.requests[0].method == "GET"
     assert transport.requests[1].method == "PUT"
     assert transport.requests[1].body == {"event": {"angle": 15, "timestamp": 123456}}
+
+
+def test_rotate_knob_up_raises_when_time_payload_is_invalid(
+    resources: ResourceConfig,
+    input_profile: InputConfig,
+    navigation: NavigationConfig,
+) -> None:
+    transport = FakeTransport(
+        responses={"suunto://TEST123/Dev/Time": {"unexpected": "value"}}
+    )
+    controller = build_controller(transport, resources, input_profile, navigation)
+
+    with pytest.raises(ValueError, match="Dev/Time"):
+        controller.rotate_knob_up()
+
+
+def test_rotate_knob_up_raises_on_knob_write_transport_error_status(
+    resources: ResourceConfig,
+    input_profile: InputConfig,
+    navigation: NavigationConfig,
+) -> None:
+    transport = FakeTransport(
+        responses={"suunto://TEST123/Dev/Time": {"Content": 123456}},
+        statuses={"suunto://TEST123/Device/UserInteraction/Knob/Event": 500},
+    )
+    controller = build_controller(transport, resources, input_profile, navigation)
+
+    with pytest.raises(RuntimeError, match="Knob/Event"):
+        controller.rotate_knob_up()
+
+
+def test_perform_action_raises_on_unknown_action(
+    resources: ResourceConfig,
+    input_profile: InputConfig,
+    navigation: NavigationConfig,
+) -> None:
+    transport = FakeTransport()
+    controller = build_controller(transport, resources, input_profile, navigation)
+
+    with pytest.raises(AttributeError, match="unknown_action"):
+        controller.perform_action("unknown_action")
