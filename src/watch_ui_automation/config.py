@@ -1,5 +1,6 @@
 from collections.abc import Mapping
 from dataclasses import dataclass
+from numbers import Integral, Real
 from pathlib import Path
 from typing import Union
 
@@ -108,6 +109,31 @@ def _build_section(config_cls: type, payload: Mapping[str, object], name: str):
         raise ValueError(f"invalid section '{name}': {exc}") from exc
 
 
+def _coerce_int(value: object, label: str) -> int:
+    if isinstance(value, bool):
+        raise ValueError(f"{label} must be an integer")
+    if isinstance(value, Integral):
+        return int(value)
+    if isinstance(value, Real):
+        if float(value).is_integer():
+            return int(value)
+        raise ValueError(f"{label} must be an integer")
+    if isinstance(value, str):
+        try:
+            return int(value.strip())
+        except ValueError as exc:
+            raise ValueError(f"{label} must be an integer") from exc
+    raise ValueError(f"{label} must be an integer")
+
+
+def _validate_input_config(input_config: InputConfig) -> InputConfig:
+    coerced = {
+        field_name: _coerce_int(field_value, f"input.{field_name}")
+        for field_name, field_value in input_config.__dict__.items()
+    }
+    return InputConfig(**coerced)
+
+
 def _validate_navigation_config(navigation: NavigationConfig) -> NavigationConfig:
     for field_name, actions in navigation.__dict__.items():
         if not isinstance(actions, list):
@@ -143,7 +169,7 @@ def load_project_config(path: Union[str, Path]) -> ProjectConfig:
         timeouts=_build_section(TimeoutConfig, timeout_raw, "timeouts"),
         artifacts=_build_section(ArtifactConfig, artifact_raw, "artifacts"),
         resources=_build_section(ResourceConfig, resources, "resources"),
-        input=_build_section(InputConfig, input_raw, "input"),
+        input=_validate_input_config(_build_section(InputConfig, input_raw, "input")),
         navigation=_validate_navigation_config(
             _build_section(NavigationConfig, navigation_raw, "navigation")
         ),

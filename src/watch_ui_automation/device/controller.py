@@ -47,8 +47,7 @@ class SdsDeviceController:
             SdsRequest(method="GET", uri=CONNECTED_DEVICES_URI),
             "ConnectedDevices",
         )
-        body = response.body if isinstance(response.body, Mapping) else {}
-        devices = body.get("Devices", [])
+        devices = self._extract_connected_devices(response.body)
         if self.serial not in devices:
             raise AssertionError(f"device not connected: {self.serial}")
 
@@ -196,6 +195,19 @@ class SdsDeviceController:
         if response.status >= 400:
             raise RuntimeError(f"{label} request failed with status {response.status}")
         return response
+
+    def _extract_connected_devices(self, payload: Any) -> list[str]:
+        if not isinstance(payload, Mapping):
+            raise ValueError("ConnectedDevices payload must be a mapping")
+        devices = payload.get("Devices", [])
+        if isinstance(devices, (str, bytes)) or not isinstance(devices, Sequence):
+            raise ValueError("ConnectedDevices Devices must be a sequence of strings")
+        normalized_devices: list[str] = []
+        for device in devices:
+            if not isinstance(device, str):
+                raise ValueError("ConnectedDevices Devices must be a sequence of strings")
+            normalized_devices.append(device)
+        return normalized_devices
 
 
 DeviceController = SdsDeviceController

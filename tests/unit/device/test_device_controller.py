@@ -144,6 +144,20 @@ def test_assert_connected_raises_on_transport_error_status(
         controller.assert_connected()
 
 
+def test_assert_connected_rejects_invalid_devices_payload_shape(
+    resources: ResourceConfig,
+    input_profile: InputConfig,
+    navigation: NavigationConfig,
+) -> None:
+    transport = FakeTransport(
+        responses={"suunto://SDS/ConnectedDevices": {"Devices": "TEST123"}}
+    )
+    controller = build_controller(transport, resources, input_profile, navigation)
+
+    with pytest.raises(ValueError, match="Devices"):
+        controller.assert_connected()
+
+
 def test_read_json_reads_resource_body(
     resources: ResourceConfig,
     input_profile: InputConfig,
@@ -213,13 +227,32 @@ def test_tap_center_sends_numeric_touch_sequence(
         "suunto://TEST123/Device/UserInteraction/Touch/Event",
         "suunto://TEST123/Device/UserInteraction/Touch/Event",
     ]
-    assert [request.body["type"] for request in transport.requests] == [1, 3, 6, 99]
-    assert transport.requests[0].body == {
-        "x": 233,
-        "y": 233,
-        "data": {"x": 0.0, "y": 0.0},
-        "type": 1,
-    }
+    assert [request.body for request in transport.requests] == [
+        {
+            "x": 233,
+            "y": 233,
+            "data": {"x": 0.0, "y": 0.0},
+            "type": 1,
+        },
+        {
+            "x": 233,
+            "y": 233,
+            "data": {"x": 0.0, "y": 0.0},
+            "type": 3,
+        },
+        {
+            "x": 233,
+            "y": 233,
+            "data": {"x": 0.0, "y": 0.0},
+            "type": 6,
+        },
+        {
+            "x": 233,
+            "y": 233,
+            "data": {"x": 0.0, "y": 0.0},
+            "type": 99,
+        },
+    ]
 
 
 def test_swipe_left_sends_numeric_touch_sequence(
@@ -232,17 +265,50 @@ def test_swipe_left_sends_numeric_touch_sequence(
 
     controller.swipe_left()
 
-    assert [request.body["type"] for request in transport.requests] == [1, 2, 5, 2, 3, 8, 99]
-    assert transport.requests[0].body["x"] == 420
-    assert transport.requests[0].body["y"] == 233
-    assert transport.requests[2].body["type"] == 5
-    assert transport.requests[5].body["type"] == 8
-    assert transport.requests[6].body == {
-        "x": 0,
-        "y": 0,
-        "data": {"x": 0.0, "y": 0.0},
-        "type": 99,
-    }
+    assert [request.body for request in transport.requests] == [
+        {
+            "x": 420,
+            "y": 233,
+            "data": {"x": 0.0, "y": 0.0},
+            "type": 1,
+        },
+        {
+            "x": 412,
+            "y": 233,
+            "data": {"x": -66.0, "y": 0.0},
+            "type": 2,
+        },
+        {
+            "x": 233,
+            "y": 233,
+            "data": {"x": 0.0, "y": 0.0},
+            "type": 5,
+        },
+        {
+            "x": 206,
+            "y": 233,
+            "data": {"x": -1100.0, "y": -6.0},
+            "type": 2,
+        },
+        {
+            "x": 46,
+            "y": 233,
+            "data": {"x": -1920.0, "y": -7.0},
+            "type": 3,
+        },
+        {
+            "x": 46,
+            "y": 233,
+            "data": {"x": -1920.0, "y": -7.0},
+            "type": 8,
+        },
+        {
+            "x": 0,
+            "y": 0,
+            "data": {"x": 0.0, "y": 0.0},
+            "type": 99,
+        },
+    ]
 
 
 def test_swipe_up_sends_numeric_touch_sequence(
@@ -255,17 +321,50 @@ def test_swipe_up_sends_numeric_touch_sequence(
 
     controller.swipe_up()
 
-    assert [request.body["type"] for request in transport.requests] == [1, 2, 5, 2, 3, 8, 99]
-    assert transport.requests[0].body["x"] == 233
-    assert transport.requests[0].body["y"] == 360
-    assert transport.requests[2].body["type"] == 5
-    assert transport.requests[5].body["type"] == 8
-    assert transport.requests[6].body == {
-        "x": 0,
-        "y": 0,
-        "data": {"x": 0.0, "y": 0.0},
-        "type": 99,
-    }
+    assert [request.body for request in transport.requests] == [
+        {
+            "x": 233,
+            "y": 360,
+            "data": {"x": 0.0, "y": 0.0},
+            "type": 1,
+        },
+        {
+            "x": 233,
+            "y": 344,
+            "data": {"x": 0.0, "y": -96.0},
+            "type": 2,
+        },
+        {
+            "x": 233,
+            "y": 280,
+            "data": {"x": 0.0, "y": 0.0},
+            "type": 5,
+        },
+        {
+            "x": 233,
+            "y": 232,
+            "data": {"x": 0.0, "y": -480.0},
+            "type": 2,
+        },
+        {
+            "x": 233,
+            "y": 120,
+            "data": {"x": 104.0, "y": -2016.0},
+            "type": 3,
+        },
+        {
+            "x": 233,
+            "y": 120,
+            "data": {"x": 104.0, "y": -2016.0},
+            "type": 8,
+        },
+        {
+            "x": 0,
+            "y": 0,
+            "data": {"x": 0.0, "y": 0.0},
+            "type": 99,
+        },
+    ]
 
 
 def test_tap_center_raises_on_touch_transport_error_status(

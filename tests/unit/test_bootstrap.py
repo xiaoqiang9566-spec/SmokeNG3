@@ -178,6 +178,56 @@ def test_load_project_config_rejects_invalid_navigation_action(
         load_project_config(config_file)
 
 
+def test_load_project_config_rejects_invalid_input_coordinate_type(
+    tmp_path: Path,
+) -> None:
+    config_file = tmp_path / "invalid-input.yaml"
+    config_file.write_text(
+        "\n".join(
+            [
+                "device:",
+                "  serial: TEST123",
+                "  sds_url: ws://localhost:65534",
+                "timeouts:",
+                "  request_seconds: 8",
+                "  settle_seconds: 1.5",
+                "  poll_interval_seconds: 0.25",
+                "artifacts:",
+                "  root_dir: artifacts",
+                "resources:",
+                "  current_page_uri: suunto://{serial}/System/UI/CurrentPage",
+                "  current_widget_uri: suunto://{serial}/System/UI/CurrentWidget",
+                "  workout_state_uri: suunto://{serial}/Sport/Workout/State",
+                "  settings_focus_uri: suunto://{serial}/System/UI/Settings/FocusedItem",
+                "input:",
+                "  tap_center_x: bad",
+                "  tap_center_y: 233",
+                "  swipe_left_start_x: 420",
+                "  swipe_left_end_x: 46",
+                "  swipe_horizontal_y: 233",
+                "  swipe_up_x: 233",
+                "  swipe_up_start_y: 360",
+                "  swipe_up_end_y: 120",
+                "navigation:",
+                "  open_settings:",
+                "    - press_middle",
+                "  open_widget:",
+                "    - swipe_left",
+                "  open_workout:",
+                "    - press_top_left",
+                "  go_back:",
+                "    - press_bottom_left",
+                "  workout_pause_resume:",
+                "    - press_top",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="input.tap_center_x"):
+        load_project_config(config_file)
+
+
 def test_supported_navigation_actions_include_task4_defaults() -> None:
     assert "press_middle" in SUPPORTED_NAVIGATION_ACTIONS
     assert "swipe_left" in SUPPORTED_NAVIGATION_ACTIONS
