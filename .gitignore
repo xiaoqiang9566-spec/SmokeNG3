@@ -11,4 +11,5 @@ htmlcov/
 .Python
 .python-version
 /artifacts/
+.worktrees/
 *.pyc
