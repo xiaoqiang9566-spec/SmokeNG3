@@ -15,3 +15,25 @@ resources:
   current_widget_uri: suunto://{serial}/System/UI/CurrentWidget
   workout_state_uri: suunto://{serial}/Sport/Workout/State
   settings_focus_uri: suunto://{serial}/System/UI/Settings/FocusedItem
+
+input:
+  tap_center_x: 233
+  tap_center_y: 233
+  swipe_left_start_x: 320
+  swipe_left_end_x: 120
+  swipe_horizontal_y: 233
+  swipe_up_x: 233
+  swipe_up_start_y: 320
+  swipe_up_end_y: 120
+
+navigation:
+  open_settings:
+    - press_middle
+  open_widget:
+    - swipe_left
+  open_workout:
+    - press_top
+  go_back:
+    - press_bottom
+  workout_pause_resume:
+    - press_middle

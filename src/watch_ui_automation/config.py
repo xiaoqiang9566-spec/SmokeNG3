@@ -33,11 +33,34 @@ class ResourceConfig:
 
 
 @dataclass(frozen=True)
+class InputConfig:
+    tap_center_x: int
+    tap_center_y: int
+    swipe_left_start_x: int
+    swipe_left_end_x: int
+    swipe_horizontal_y: int
+    swipe_up_x: int
+    swipe_up_start_y: int
+    swipe_up_end_y: int
+
+
+@dataclass(frozen=True)
+class NavigationConfig:
+    open_settings: list[str]
+    open_widget: list[str]
+    open_workout: list[str]
+    go_back: list[str]
+    workout_pause_resume: list[str]
+
+
+@dataclass(frozen=True)
 class ProjectConfig:
     device: DeviceConfig
     timeouts: TimeoutConfig
     artifacts: ArtifactConfig
     resources: ResourceConfig
+    input: InputConfig
+    navigation: NavigationConfig
 
 
 def _require_mapping(value: object, label: str) -> Mapping[str, object]:
@@ -80,6 +103,8 @@ def load_project_config(path: Union[str, Path]) -> ProjectConfig:
     timeout_raw = _require_section(project_raw, "timeouts")
     artifact_raw = _require_section(project_raw, "artifacts")
     resource_raw = _require_section(project_raw, "resources")
+    input_raw = _require_section(project_raw, "input")
+    navigation_raw = _require_section(project_raw, "navigation")
 
     device = _build_section(DeviceConfig, device_raw, "device")
     resources = _expand_resource_templates(resource_raw, device.serial)
@@ -89,4 +114,6 @@ def load_project_config(path: Union[str, Path]) -> ProjectConfig:
         timeouts=_build_section(TimeoutConfig, timeout_raw, "timeouts"),
         artifacts=_build_section(ArtifactConfig, artifact_raw, "artifacts"),
         resources=_build_section(ResourceConfig, resources, "resources"),
+        input=_build_section(InputConfig, input_raw, "input"),
+        navigation=_build_section(NavigationConfig, navigation_raw, "navigation"),
     )
