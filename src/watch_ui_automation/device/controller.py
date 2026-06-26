@@ -7,10 +7,15 @@ from watch_ui_automation.config import InputConfig, NavigationConfig, ResourceCo
 from watch_ui_automation.transport import SdsRequest, SdsTransportClient
 
 CONNECTED_DEVICES_URI = "suunto://SDS/ConnectedDevices"
+BYPASS_ROUTER_URI = "suunto://SDS/BypassRouter"
 DEVICE_TIME_URI_TEMPLATE = "suunto://{serial}/Dev/Time"
 BUTTON_URI_TEMPLATE = "suunto://{serial}/Ui/Test/SimulatedButtonPress"
+OPEN_VIEW_URI_TEMPLATE = "suunto://{serial}/Ui/Control/Open"
+CLOSE_VIEW_URI_TEMPLATE = "suunto://{serial}/Ui/Control/Close"
 TOUCH_URI_TEMPLATE = "suunto://{serial}/Device/UserInteraction/Touch/Event"
 KNOB_URI_TEMPLATE = "suunto://{serial}/Device/UserInteraction/Knob/Event"
+TOUCH_BYPASS_PATH = "/Device/UserInteraction/Touch/Event"
+KNOB_BYPASS_PATH = "/Device/UserInteraction/Knob/Event"
 
 BUTTON_TOP = 0
 BUTTON_MIDDLE = 1
@@ -41,6 +46,7 @@ class SdsDeviceController:
         self.resources = resources
         self.input_profile = input_profile
         self.navigation = navigation
+        self._active_bypasses: set[str] = set()
 
     def assert_connected(self) -> None:
         response = self._send_checked(
@@ -51,9 +57,32 @@ class SdsDeviceController:
         if self.serial not in devices:
             raise AssertionError(f"device not connected: {self.serial}")
 
-    def read_json(self, uri: str) -> Any:
-        response = self._send_checked(SdsRequest(method="GET", uri=uri), uri)
+    def read_json(self, uri: str, body: Any | None = None) -> Any:
+        response = self._send_checked(
+            SdsRequest(method="GET", uri=uri, body={} if body is None else body),
+            uri,
+        )
         return response.body
+
+    def open_view(self, view_name: str) -> None:
+        self._send_checked(
+            SdsRequest(
+                method="PUT",
+                uri=OPEN_VIEW_URI_TEMPLATE.format(serial=self.serial),
+                body={"name": view_name},
+            ),
+            "Ui/Control/Open",
+        )
+
+    def close_view(self, view_name: str) -> None:
+        self._send_checked(
+            SdsRequest(
+                method="PUT",
+                uri=CLOSE_VIEW_URI_TEMPLATE.format(serial=self.serial),
+                body={"name": view_name},
+            ),
+            "Ui/Control/Close",
+        )
 
     def press_top(self, duration: float = 0.8) -> None:
         self._press_button(BUTTON_TOP, duration)
@@ -81,46 +110,27 @@ class SdsDeviceController:
         )
 
     def swipe_left(self) -> None:
-        drag_start_x = self.input_profile.swipe_left_start_x - (
-            (self.input_profile.swipe_left_start_x - self.input_profile.swipe_left_end_x)
-            // 2
-        )
-        pre_drag_x = self.input_profile.swipe_left_start_x - 8
-        mid_x = max(self.input_profile.swipe_left_end_x, drag_start_x - 27)
-        flick_velocity_x = float(self.input_profile.swipe_left_end_x - mid_x) * 12.0
         self._touch_sequence(
             [
                 (self.input_profile.swipe_left_start_x, self.input_profile.swipe_horizontal_y, 0.0, 0.0, TOUCHDOWN),
-                (pre_drag_x, self.input_profile.swipe_horizontal_y, -66.0, 0.0, TOUCHMOVE),
-                (drag_start_x, self.input_profile.swipe_horizontal_y, 0.0, 0.0, DRAG_START),
-                (mid_x, self.input_profile.swipe_horizontal_y, -1100.0, -6.0, TOUCHMOVE),
-                (self.input_profile.swipe_left_end_x, self.input_profile.swipe_horizontal_y, flick_velocity_x, -7.0, LIFTOFF),
-                (self.input_profile.swipe_left_end_x, self.input_profile.swipe_horizontal_y, flick_velocity_x, -7.0, FLICK),
-                (0, 0, 0.0, 0.0, IDLE),
+                (self.input_profile.swipe_left_end_x, self.input_profile.swipe_horizontal_y, 0.0, 0.0, TOUCHMOVE),
+                (self.input_profile.swipe_left_end_x, self.input_profile.swipe_horizontal_y, 0.0, 0.0, LIFTOFF),
+                (self.input_profile.swipe_left_end_x, self.input_profile.swipe_horizontal_y, 0.0, 0.0, IDLE),
             ]
         )
 
     def swipe_up(self) -> None:
-        pre_drag_y = self.input_profile.swipe_up_start_y - 16
-        drag_start_y = self.input_profile.swipe_up_start_y - (
-            (self.input_profile.swipe_up_start_y - self.input_profile.swipe_up_end_y)
-            // 3
-        )
-        mid_y = max(self.input_profile.swipe_up_end_y, drag_start_y - 48)
-        flick_velocity_y = float(self.input_profile.swipe_up_end_y - mid_y) * 18.0
         self._touch_sequence(
             [
                 (self.input_profile.swipe_up_x, self.input_profile.swipe_up_start_y, 0.0, 0.0, TOUCHDOWN),
-                (self.input_profile.swipe_up_x, pre_drag_y, 0.0, -96.0, TOUCHMOVE),
-                (self.input_profile.swipe_up_x, drag_start_y, 0.0, 0.0, DRAG_START),
-                (self.input_profile.swipe_up_x, mid_y, 0.0, -480.0, TOUCHMOVE),
-                (self.input_profile.swipe_up_x, self.input_profile.swipe_up_end_y, 104.0, flick_velocity_y, LIFTOFF),
-                (self.input_profile.swipe_up_x, self.input_profile.swipe_up_end_y, 104.0, flick_velocity_y, FLICK),
-                (0, 0, 0.0, 0.0, IDLE),
+                (self.input_profile.swipe_up_x, self.input_profile.swipe_up_end_y, 0.0, 0.0, TOUCHMOVE),
+                (self.input_profile.swipe_up_x, self.input_profile.swipe_up_end_y, 0.0, 0.0, LIFTOFF),
+                (self.input_profile.swipe_up_x, self.input_profile.swipe_up_end_y, 0.0, 0.0, IDLE),
             ]
         )
 
     def rotate_knob_up(self, angle: int = 15) -> None:
+        self._ensure_bypass(KNOB_BYPASS_PATH)
         timestamp = self._read_timestamp()
         self._send_checked(
             SdsRequest(
@@ -159,6 +169,7 @@ class SdsDeviceController:
         velocity_x: float = 0.0,
         velocity_y: float = 0.0,
     ) -> None:
+        self._ensure_bypass(TOUCH_BYPASS_PATH)
         self._send_checked(
             SdsRequest(
                 method="PUT",
@@ -172,6 +183,22 @@ class SdsDeviceController:
             ),
             "Touch/Event",
         )
+
+    def _ensure_bypass(self, resource_path: str) -> None:
+        if resource_path in self._active_bypasses:
+            return
+        self._send_checked(
+            SdsRequest(
+                method="POST",
+                uri=BYPASS_ROUTER_URI,
+                body={
+                    "serial": self.serial,
+                    "pathToBypass": resource_path,
+                },
+            ),
+            "BypassRouter",
+        )
+        self._active_bypasses.add(resource_path)
 
     def _touch_sequence(
         self, events: Sequence[tuple[int, int, float, float, int]]

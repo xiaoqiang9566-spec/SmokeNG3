@@ -78,7 +78,7 @@ def navigation() -> NavigationConfig:
     return NavigationConfig(
         open_settings=["press_middle"],
         open_widget=["swipe_left"],
-        open_workout=["press_top_left"],
+        open_workout=["swipe_up"],
         go_back=["press_bottom_left"],
         workout_pause_resume=["press_top"],
     )
@@ -175,6 +175,27 @@ def test_read_json_reads_resource_body(
     assert transport.requests[0].uri == resources.current_page_uri
 
 
+def test_read_json_supports_get_request_body(
+    resources: ResourceConfig,
+    input_profile: InputConfig,
+    navigation: NavigationConfig,
+) -> None:
+    transport = FakeTransport(
+        responses={resources.settings_focus_uri: {"Content": "selector result"}}
+    )
+    controller = build_controller(transport, resources, input_profile, navigation)
+
+    payload = controller.read_json(
+        resources.settings_focus_uri,
+        body={"select": ".list"},
+    )
+
+    assert payload == {"Content": "selector result"}
+    assert transport.requests[0].method == "GET"
+    assert transport.requests[0].uri == resources.settings_focus_uri
+    assert transport.requests[0].body == {"select": ".list"}
+
+
 def test_press_middle_sends_button_press_request(
     resources: ResourceConfig,
     input_profile: InputConfig,
@@ -220,14 +241,25 @@ def test_tap_center_sends_numeric_touch_sequence(
 
     controller.tap_center()
 
-    assert [request.method for request in transport.requests] == ["PUT", "PUT", "PUT", "PUT"]
+    assert [request.method for request in transport.requests] == [
+        "POST",
+        "PUT",
+        "PUT",
+        "PUT",
+        "PUT",
+    ]
     assert [request.uri for request in transport.requests] == [
+        "suunto://SDS/BypassRouter",
         "suunto://TEST123/Device/UserInteraction/Touch/Event",
         "suunto://TEST123/Device/UserInteraction/Touch/Event",
         "suunto://TEST123/Device/UserInteraction/Touch/Event",
         "suunto://TEST123/Device/UserInteraction/Touch/Event",
     ]
     assert [request.body for request in transport.requests] == [
+        {
+            "serial": "TEST123",
+            "pathToBypass": "/Device/UserInteraction/Touch/Event",
+        },
         {
             "x": 233,
             "y": 233,
@@ -265,7 +297,13 @@ def test_swipe_left_sends_numeric_touch_sequence(
 
     controller.swipe_left()
 
-    assert [request.body for request in transport.requests] == [
+    assert transport.requests[0].method == "POST"
+    assert transport.requests[0].uri == "suunto://SDS/BypassRouter"
+    assert transport.requests[0].body == {
+        "serial": "TEST123",
+        "pathToBypass": "/Device/UserInteraction/Touch/Event",
+    }
+    assert [request.body for request in transport.requests[1:]] == [
         {
             "x": 420,
             "y": 233,
@@ -273,38 +311,20 @@ def test_swipe_left_sends_numeric_touch_sequence(
             "type": 1,
         },
         {
-            "x": 412,
-            "y": 233,
-            "data": {"x": -66.0, "y": 0.0},
-            "type": 2,
-        },
-        {
-            "x": 233,
+            "x": 46,
             "y": 233,
             "data": {"x": 0.0, "y": 0.0},
-            "type": 5,
-        },
-        {
-            "x": 206,
-            "y": 233,
-            "data": {"x": -1100.0, "y": -6.0},
             "type": 2,
         },
         {
             "x": 46,
             "y": 233,
-            "data": {"x": -1920.0, "y": -7.0},
+            "data": {"x": 0.0, "y": 0.0},
             "type": 3,
         },
         {
             "x": 46,
             "y": 233,
-            "data": {"x": -1920.0, "y": -7.0},
-            "type": 8,
-        },
-        {
-            "x": 0,
-            "y": 0,
             "data": {"x": 0.0, "y": 0.0},
             "type": 99,
         },
@@ -321,7 +341,13 @@ def test_swipe_up_sends_numeric_touch_sequence(
 
     controller.swipe_up()
 
-    assert [request.body for request in transport.requests] == [
+    assert transport.requests[0].method == "POST"
+    assert transport.requests[0].uri == "suunto://SDS/BypassRouter"
+    assert transport.requests[0].body == {
+        "serial": "TEST123",
+        "pathToBypass": "/Device/UserInteraction/Touch/Event",
+    }
+    assert [request.body for request in transport.requests[1:]] == [
         {
             "x": 233,
             "y": 360,
@@ -330,37 +356,19 @@ def test_swipe_up_sends_numeric_touch_sequence(
         },
         {
             "x": 233,
-            "y": 344,
-            "data": {"x": 0.0, "y": -96.0},
-            "type": 2,
-        },
-        {
-            "x": 233,
-            "y": 280,
+            "y": 120,
             "data": {"x": 0.0, "y": 0.0},
-            "type": 5,
-        },
-        {
-            "x": 233,
-            "y": 232,
-            "data": {"x": 0.0, "y": -480.0},
             "type": 2,
         },
         {
             "x": 233,
             "y": 120,
-            "data": {"x": 104.0, "y": -2016.0},
+            "data": {"x": 0.0, "y": 0.0},
             "type": 3,
         },
         {
             "x": 233,
             "y": 120,
-            "data": {"x": 104.0, "y": -2016.0},
-            "type": 8,
-        },
-        {
-            "x": 0,
-            "y": 0,
             "data": {"x": 0.0, "y": 0.0},
             "type": 99,
         },
@@ -381,6 +389,20 @@ def test_tap_center_raises_on_touch_transport_error_status(
         controller.tap_center()
 
 
+def test_tap_center_raises_when_touch_bypass_request_fails(
+    resources: ResourceConfig,
+    input_profile: InputConfig,
+    navigation: NavigationConfig,
+) -> None:
+    transport = FakeTransport(
+        statuses={"suunto://SDS/BypassRouter": 503}
+    )
+    controller = build_controller(transport, resources, input_profile, navigation)
+
+    with pytest.raises(RuntimeError, match="BypassRouter"):
+        controller.tap_center()
+
+
 def test_rotate_knob_up_reads_time_before_sending_knob_event(
     resources: ResourceConfig,
     input_profile: InputConfig,
@@ -394,12 +416,18 @@ def test_rotate_knob_up_reads_time_before_sending_knob_event(
     controller.rotate_knob_up()
 
     assert [request.uri for request in transport.requests] == [
+        "suunto://SDS/BypassRouter",
         "suunto://TEST123/Dev/Time",
         "suunto://TEST123/Device/UserInteraction/Knob/Event",
     ]
-    assert transport.requests[0].method == "GET"
-    assert transport.requests[1].method == "PUT"
-    assert transport.requests[1].body == {"event": {"angle": 15, "timestamp": 123456}}
+    assert transport.requests[0].method == "POST"
+    assert transport.requests[0].body == {
+        "serial": "TEST123",
+        "pathToBypass": "/Device/UserInteraction/Knob/Event",
+    }
+    assert transport.requests[1].method == "GET"
+    assert transport.requests[2].method == "PUT"
+    assert transport.requests[2].body == {"event": {"angle": 15, "timestamp": 123456}}
 
 
 def test_rotate_knob_up_raises_when_time_payload_is_invalid(
@@ -431,6 +459,20 @@ def test_rotate_knob_up_raises_on_knob_write_transport_error_status(
         controller.rotate_knob_up()
 
 
+def test_rotate_knob_up_raises_when_knob_bypass_request_fails(
+    resources: ResourceConfig,
+    input_profile: InputConfig,
+    navigation: NavigationConfig,
+) -> None:
+    transport = FakeTransport(
+        statuses={"suunto://SDS/BypassRouter": 503}
+    )
+    controller = build_controller(transport, resources, input_profile, navigation)
+
+    with pytest.raises(RuntimeError, match="BypassRouter"):
+        controller.rotate_knob_up()
+
+
 def test_perform_action_raises_on_unknown_action(
     resources: ResourceConfig,
     input_profile: InputConfig,
@@ -441,3 +483,33 @@ def test_perform_action_raises_on_unknown_action(
 
     with pytest.raises(AttributeError, match="unknown_action"):
         controller.perform_action("unknown_action")
+
+
+def test_open_view_sends_put_request_to_ui_control_open(
+    resources: ResourceConfig,
+    input_profile: InputConfig,
+    navigation: NavigationConfig,
+) -> None:
+    transport = FakeTransport()
+    controller = build_controller(transport, resources, input_profile, navigation)
+
+    controller.open_view("s-main")
+
+    assert transport.requests[0].method == "PUT"
+    assert transport.requests[0].uri == "suunto://TEST123/Ui/Control/Open"
+    assert transport.requests[0].body == {"name": "s-main"}
+
+
+def test_close_view_sends_put_request_to_ui_control_close(
+    resources: ResourceConfig,
+    input_profile: InputConfig,
+    navigation: NavigationConfig,
+) -> None:
+    transport = FakeTransport()
+    controller = build_controller(transport, resources, input_profile, navigation)
+
+    controller.close_view("s-main")
+
+    assert transport.requests[0].method == "PUT"
+    assert transport.requests[0].uri == "suunto://TEST123/Ui/Control/Close"
+    assert transport.requests[0].body == {"name": "s-main"}

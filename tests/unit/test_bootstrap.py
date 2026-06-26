@@ -40,7 +40,7 @@ def test_package_bootstrap_loads_yaml_config(tmp_path: Path) -> None:
                 "  open_widget:",
                 "    - swipe_left",
                 "  open_workout:",
-                "    - press_top_left",
+                "    - swipe_up",
                 "  go_back:",
                 "    - press_bottom_left",
                 "  workout_pause_resume:",
@@ -94,7 +94,7 @@ def test_package_bootstrap_loads_input_and_navigation_config(tmp_path: Path) -> 
                 "  open_widget:",
                 "    - swipe_left",
                 "  open_workout:",
-                "    - press_top_left",
+                "    - swipe_up",
                 "  go_back:",
                 "    - press_bottom_left",
                 "  workout_pause_resume:",
@@ -123,7 +123,7 @@ def test_default_config_matches_task4_defaults() -> None:
     assert config.input.swipe_up_end_y == 120
     assert config.navigation.open_settings == ["press_middle"]
     assert config.navigation.open_widget == ["swipe_left"]
-    assert config.navigation.open_workout == ["press_top_left"]
+    assert config.navigation.open_workout == ["swipe_up"]
     assert config.navigation.go_back == ["press_bottom_left"]
     assert config.navigation.workout_pause_resume == ["press_top"]
 
@@ -214,7 +214,7 @@ def test_load_project_config_rejects_invalid_input_coordinate_type(
                 "  open_widget:",
                 "    - swipe_left",
                 "  open_workout:",
-                "    - press_top_left",
+                "    - swipe_up",
                 "  go_back:",
                 "    - press_bottom_left",
                 "  workout_pause_resume:",
