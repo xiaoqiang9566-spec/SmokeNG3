@@ -1,0 +1,66 @@
+project:
+  name: watch-ui-automation
+  default_env: local
+
+paths:
+  data_dir: data
+  logs_dir: logs
+  report_results_dir: reports/allure-results
+  report_html_dir: reports/allure-report
+
+input_capabilities:
+  durations:
+    short_press: 0.1
+    long_press: 2
+  buttons:
+    press_top:
+      button_id: 0
+      position: top
+      supported_durations:
+        - short_press
+        - long_press
+    press_middle:
+      button_id: 1
+      position: middle
+      supported_durations:
+        - short_press
+        - long_press
+    press_bottom:
+      button_id: 2
+      position: bottom
+      supported_durations:
+        - short_press
+        - long_press
+    press_top_left:
+      button_id: 3
+      position: top_left
+      supported_durations:
+        - short_press
+        - long_press
+    press_bottom_left:
+      button_id: 4
+      position: bottom_left
+      supported_durations:
+        - short_press
+        - long_press
+  gestures:
+    tap_center:
+      type: tap
+      direction: center
+      coordinate_profile: tap_center
+    swipe_up:
+      type: swipe
+      direction: up
+      coordinate_profile: vertical_swipe
+    swipe_down:
+      type: swipe
+      direction: down
+      coordinate_profile: vertical_swipe
+    swipe_left:
+      type: swipe
+      direction: left
+      coordinate_profile: horizontal_swipe
+    swipe_right:
+      type: swipe
+      direction: right
+      coordinate_profile: horizontal_swipe

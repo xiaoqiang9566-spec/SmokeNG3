@@ -77,8 +77,8 @@ def input_profile() -> InputConfig:
 def navigation() -> NavigationConfig:
     return NavigationConfig(
         open_settings=["press_middle"],
-        open_widget=["swipe_left"],
-        open_workout=["swipe_up"],
+        open_widget=["swipe_up"],
+        open_workout=["press_top"],
         go_back=["press_bottom_left"],
         workout_pause_resume=["press_top"],
     )
@@ -204,12 +204,29 @@ def test_press_middle_sends_button_press_request(
     transport = FakeTransport()
     controller = build_controller(transport, resources, input_profile, navigation)
 
-    controller.press_middle(duration=0.8)
+    controller.press_middle()
 
     assert transport.requests[0].method == "PUT"
     assert transport.requests[0].uri == "suunto://TEST123/Ui/Test/SimulatedButtonPress"
     assert transport.requests[0].body == {
-        "value": {"id": 1, "duration": 0.8}
+        "value": {"id": 1, "duration": 0.1}
+    }
+
+
+def test_press_middle_can_send_long_press_request(
+    resources: ResourceConfig,
+    input_profile: InputConfig,
+    navigation: NavigationConfig,
+) -> None:
+    transport = FakeTransport()
+    controller = build_controller(transport, resources, input_profile, navigation)
+
+    controller.press_middle(duration=2)
+
+    assert transport.requests[0].method == "PUT"
+    assert transport.requests[0].uri == "suunto://TEST123/Ui/Test/SimulatedButtonPress"
+    assert transport.requests[0].body == {
+        "value": {"id": 1, "duration": 2}
     }
 
 
@@ -224,7 +241,7 @@ def test_press_middle_raises_on_transport_error_status(
     controller = build_controller(transport, resources, input_profile, navigation)
 
     with pytest.raises(RuntimeError, match="SimulatedButtonPress"):
-        controller.press_middle(duration=0.8)
+        controller.press_middle()
 
 
 def test_device_module_exports_backward_compatible_alias() -> None:
@@ -311,20 +328,38 @@ def test_swipe_left_sends_numeric_touch_sequence(
             "type": 1,
         },
         {
-            "x": 46,
+            "x": 412,
+            "y": 233,
+            "data": {"x": -66.0, "y": 0.0},
+            "type": 2,
+        },
+        {
+            "x": 233,
             "y": 233,
             "data": {"x": 0.0, "y": 0.0},
+            "type": 5,
+        },
+        {
+            "x": 206,
+            "y": 233,
+            "data": {"x": -1100.0, "y": -6.0},
             "type": 2,
         },
         {
             "x": 46,
             "y": 233,
-            "data": {"x": 0.0, "y": 0.0},
+            "data": {"x": -1920.0, "y": -7.0},
             "type": 3,
         },
         {
             "x": 46,
             "y": 233,
+            "data": {"x": -1920.0, "y": -7.0},
+            "type": 8,
+        },
+        {
+            "x": 0,
+            "y": 0,
             "data": {"x": 0.0, "y": 0.0},
             "type": 99,
         },
@@ -356,19 +391,37 @@ def test_swipe_up_sends_numeric_touch_sequence(
         },
         {
             "x": 233,
-            "y": 120,
+            "y": 344,
+            "data": {"x": 0.0, "y": -96.0},
+            "type": 2,
+        },
+        {
+            "x": 233,
+            "y": 280,
             "data": {"x": 0.0, "y": 0.0},
+            "type": 5,
+        },
+        {
+            "x": 233,
+            "y": 232,
+            "data": {"x": 0.0, "y": -480.0},
             "type": 2,
         },
         {
             "x": 233,
             "y": 120,
-            "data": {"x": 0.0, "y": 0.0},
+            "data": {"x": 104.0, "y": -2016.0},
             "type": 3,
         },
         {
             "x": 233,
             "y": 120,
+            "data": {"x": 104.0, "y": -2016.0},
+            "type": 8,
+        },
+        {
+            "x": 0,
+            "y": 0,
             "data": {"x": 0.0, "y": 0.0},
             "type": 99,
         },

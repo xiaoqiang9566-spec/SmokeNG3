@@ -1,0 +1,38 @@
+cases:
+  - id: smoke_widget_yaml
+    title: Open widget and return to watchface
+    markers:
+      - yaml
+      - device
+      - smoke
+    baseline: main
+    steps:
+      - name: remember baseline widget
+        action: capture.current_widget
+        save_as: baseline_widget
+
+      - name: open widget
+        action: navigation.open_widget
+
+      - name: capture widget after open
+        action: capture.current_widget
+        save_as: widget_after_open
+
+      - name: widget changed after open
+        action: assert.changed
+        params:
+          actual: ${widget_after_open.path}
+          from: ${baseline_widget.path}
+
+      - name: return to watchface
+        action: navigation.back_to_watchface
+
+      - name: capture page after back
+        action: capture.current_page
+        save_as: page_after_back
+
+      - name: watchface is visible again
+        action: assert.equals
+        params:
+          actual: ${page_after_back.name}
+          expected: main

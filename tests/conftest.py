@@ -15,9 +15,13 @@ from watch_ui_automation.models import RunManifest
 from watch_ui_automation.session.runtime import WatchSession
 from watch_ui_automation.transport.client import SdsTransportClient
 
+RUN_LABEL_MARKERS = ("device", "yaml", "smoke", "regression", "stability")
+
 
 def pytest_addoption(parser) -> None:
     parser.addoption("--device-config", action="store", default="configs/default.yaml")
+    parser.addoption("--scenario-dir", action="store", default="tests/yaml_cases")
+    parser.addoption("--scenario-suite", action="store", default="smoke")
 
 
 def _require_real_device_config(project_config: ProjectConfig) -> None:
@@ -27,13 +31,22 @@ def _require_real_device_config(project_config: ProjectConfig) -> None:
         )
 
 
+def _selected_test_labels_from_items(items) -> list[str]:
+    selected = set()
+    for item in items:
+        for marker in item.iter_markers():
+            if marker.name in RUN_LABEL_MARKERS:
+                selected.add(marker.name)
+    return [label for label in RUN_LABEL_MARKERS if label in selected]
+
+
 @pytest.fixture(scope="session")
 def project_config(pytestconfig) -> ProjectConfig:
     return load_project_config(pytestconfig.getoption("--device-config"))
 
 
 @pytest.fixture(scope="session")
-def device_dsl(project_config: ProjectConfig) -> Iterator[WatchDsl]:
+def device_dsl(request, project_config: ProjectConfig) -> Iterator[WatchDsl]:
     if os.getenv("WATCH_UI_RUN_DEVICE_TESTS") != "1":
         pytest.skip("Set WATCH_UI_RUN_DEVICE_TESTS=1 to run real-device tests")
 
@@ -44,7 +57,7 @@ def device_dsl(project_config: ProjectConfig) -> Iterator[WatchDsl]:
         RunManifest(
             device_serial=project_config.device.serial,
             sds_url=project_config.device.sds_url,
-            selected_tests=["device"],
+            selected_tests=_selected_test_labels_from_items(request.session.items),
             framework_version=__version__,
         )
     )
