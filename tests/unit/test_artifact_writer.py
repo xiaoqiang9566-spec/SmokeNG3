@@ -25,7 +25,7 @@ def test_artifact_writer_normalizes_unsafe_directory_names_but_preserves_origina
     manifest = RunManifest(
         device_serial="device::A/01",
         sds_url="ws://localhost:65534",
-        selected_tests=["tests/smoke/test_device_connection.py"],
+        selected_tests=["device", "smoke"],
         framework_version="0.1.0",
     )
     case_result = CaseResult(
@@ -42,7 +42,7 @@ def test_artifact_writer_normalizes_unsafe_directory_names_but_preserves_origina
     assert json.loads((run_dir / "run_manifest.json").read_text(encoding="utf-8")) == {
         "device_serial": "device::A/01",
         "sds_url": "ws://localhost:65534",
-        "selected_tests": ["tests/smoke/test_device_connection.py"],
+        "selected_tests": ["device", "smoke"],
         "framework_version": "0.1.0",
     }
 
@@ -71,7 +71,7 @@ def test_artifact_writer_defaults_to_repo_artifacts_directory(
         RunManifest(
             device_serial="TEST123",
             sds_url="ws://localhost:65534",
-            selected_tests=["tests/smoke/test_device_connection.py"],
+            selected_tests=["device", "smoke"],
             framework_version="0.1.0",
         )
     )
@@ -89,7 +89,7 @@ def test_artifact_writer_uses_stable_unique_case_directories_for_normalization_c
         RunManifest(
             device_serial="TEST123",
             sds_url="ws://localhost:65534",
-            selected_tests=["tests/smoke/test_device_connection.py"],
+            selected_tests=["device", "smoke"],
             framework_version="0.1.0",
         )
     )
@@ -189,7 +189,7 @@ def test_artifact_writer_rejects_non_mapping_payloads(
         RunManifest(
             device_serial="TEST123",
             sds_url="ws://localhost:65534",
-            selected_tests=["tests/smoke/test_device_connection.py"],
+            selected_tests=["device", "smoke"],
             framework_version="0.1.0",
         )
     )
@@ -207,7 +207,7 @@ def test_artifact_writer_rejects_non_json_serializable_payloads(
         RunManifest(
             device_serial="TEST123",
             sds_url="ws://localhost:65534",
-            selected_tests=["tests/smoke/test_device_connection.py"],
+            selected_tests=["device", "smoke"],
             framework_version="0.1.0",
         )
     )
@@ -225,7 +225,7 @@ def test_artifact_writer_persists_plan_manifest_and_case_outputs(
     manifest = RunManifest(
         device_serial="TEST123",
         sds_url="ws://localhost:65534",
-        selected_tests=["tests/smoke/test_device_connection.py"],
+        selected_tests=["device", "smoke"],
         framework_version="0.1.0",
     )
     case_result = CaseResult(
@@ -275,7 +275,7 @@ def test_artifact_writer_persists_plan_manifest_and_case_outputs(
     assert json.loads((run_dir / "run_manifest.json").read_text(encoding="utf-8")) == {
         "device_serial": "TEST123",
         "sds_url": "ws://localhost:65534",
-        "selected_tests": ["tests/smoke/test_device_connection.py"],
+        "selected_tests": ["device", "smoke"],
         "framework_version": "0.1.0",
     }
 
@@ -335,7 +335,7 @@ def test_start_run_rejects_existing_plan_run_directory(
     manifest = RunManifest(
         device_serial="TEST123",
         sds_url="ws://localhost:65534",
-        selected_tests=["tests/smoke/test_device_connection.py"],
+        selected_tests=["device", "smoke"],
         framework_version="0.1.0",
     )
     existing_run_dir = tmp_path / "run-20260624-100000-TEST123"
@@ -351,7 +351,7 @@ def test_plan_models_to_dict_match_expected_fields() -> None:
     manifest = RunManifest(
         device_serial="TEST456",
         sds_url="ws://localhost:65534",
-        selected_tests=["tests/regression/test_alarm.py"],
+        selected_tests=["device", "regression"],
         framework_version="0.1.0",
     )
     case_result = CaseResult(
@@ -364,7 +364,7 @@ def test_plan_models_to_dict_match_expected_fields() -> None:
     assert manifest.to_dict() == {
         "device_serial": "TEST456",
         "sds_url": "ws://localhost:65534",
-        "selected_tests": ["tests/regression/test_alarm.py"],
+        "selected_tests": ["device", "regression"],
         "framework_version": "0.1.0",
     }
     assert case_result.to_dict() == {

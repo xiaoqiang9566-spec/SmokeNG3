@@ -4,6 +4,7 @@ from tests.conftest import read_content
 
 
 @pytest.mark.device
+@pytest.mark.regression
 def test_start_pause_resume_stop_workout_regression(device_dsl) -> None:
     case_name = "regression_workout"
     with device_dsl.session.case(case_name, expected_page="main"):

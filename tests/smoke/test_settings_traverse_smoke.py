@@ -4,6 +4,7 @@ from tests.conftest import read_content
 
 
 @pytest.mark.device
+@pytest.mark.smoke
 def test_open_known_settings_views_smoke(device_dsl) -> None:
     case_name = "smoke_settings_views"
     view_names = ["s-main", "s-ge"]

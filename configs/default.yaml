@@ -30,9 +30,9 @@ navigation:
   open_settings:
     - press_middle
   open_widget:
-    - swipe_left
-  open_workout:
     - swipe_up
+  open_workout:
+    - press_top
   go_back:
     - press_bottom_left
   workout_pause_resume:

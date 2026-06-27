@@ -4,6 +4,7 @@ from tests.conftest import read_content
 
 
 @pytest.mark.device
+@pytest.mark.regression
 def test_switch_widget_and_return_watchface_regression(device_dsl) -> None:
     case_name = "regression_widget"
     with device_dsl.session.case(case_name, expected_page="main"):
