@@ -4,6 +4,7 @@ from tests.conftest import read_content
 
 
 @pytest.mark.device
+@pytest.mark.regression
 def test_toggle_focused_setting_regression(device_dsl) -> None:
     case_name = "regression_settings"
     with device_dsl.session.case(case_name, expected_page="main"):
@@ -28,6 +29,7 @@ def test_toggle_focused_setting_regression(device_dsl) -> None:
 
 
 @pytest.mark.device
+@pytest.mark.regression
 def test_open_multiple_settings_views_regression(device_dsl) -> None:
     case_name = "regression_settings_views"
     view_names = ["s-main", "s-ge", "s-cu"]

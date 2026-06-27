@@ -4,6 +4,7 @@ from tests.conftest import read_content
 
 
 @pytest.mark.device
+@pytest.mark.smoke
 def test_device_connection_and_watchface_baseline(device_dsl) -> None:
     case_name = "smoke_device_connection"
     with device_dsl.session.case(case_name, expected_page="main"):

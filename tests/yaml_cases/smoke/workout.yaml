@@ -1,0 +1,53 @@
+cases:
+  - id: smoke_workout_yaml
+    title: Open workout and verify state
+    markers:
+      - yaml
+      - device
+      - smoke
+    baseline: main
+    steps:
+      - name: remember baseline page
+        action: capture.current_page
+        save_as: baseline_page
+
+      - name: open workout
+        action: navigation.open_workout
+
+      - name: capture page after workout open
+        action: capture.current_page
+        save_as: page_after_open
+
+      - name: page changed after workout open
+        action: assert.changed
+        params:
+          actual: ${page_after_open.name}
+          from: ${baseline_page.name}
+
+      - name: capture workout state
+        action: capture.workout_state
+        save_as: workout_after_open
+
+      - name: workout state is non-empty
+        action: assert.non_empty
+        params:
+          actual: ${workout_after_open.status}
+
+      - name: pause workout
+        action: workout.pause_or_resume
+
+      - name: resume workout
+        action: workout.pause_or_resume
+
+      - name: stop workout
+        action: workout.stop
+
+      - name: capture page after workout stop
+        action: capture.current_page
+        save_as: page_after_stop
+
+      - name: watchface is visible again
+        action: assert.equals
+        params:
+          actual: ${page_after_stop.name}
+          expected: main

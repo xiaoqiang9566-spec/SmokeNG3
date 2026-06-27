@@ -54,8 +54,8 @@ def test_watch_dsl_exposes_pages_and_flows() -> None:
     session.values["page://current"] = {"Content": "main"}
     navigation = {
         "open_settings": ["press_middle"],
-        "open_widget": ["swipe_left"],
-        "open_workout": ["swipe_up"],
+        "open_widget": ["swipe_up"],
+        "open_workout": ["press_top"],
         "go_back": ["press_bottom_left"],
         "workout_pause_resume": ["press_top"],
     }
@@ -79,7 +79,6 @@ def test_watch_dsl_exposes_pages_and_flows() -> None:
 
     assert ("open_view", "s-main") in session.calls
     assert ("close_view", "s-main") in session.calls
-    assert ("swipe_left",) in session.calls
     assert ("swipe_up",) in session.calls
     assert ("press_bottom_left",) in session.calls
     assert ("press_top",) in session.calls
@@ -96,8 +95,8 @@ def test_settings_traverse_focus_sequence_records_each_step() -> None:
     session.values["page://current"] = {"Content": "main"}
     navigation = {
         "open_settings": ["press_middle"],
-        "open_widget": ["swipe_left"],
-        "open_workout": ["swipe_up"],
+        "open_widget": ["swipe_up"],
+        "open_workout": ["press_top"],
         "go_back": ["press_bottom_left"],
         "workout_pause_resume": ["press_top"],
     }
@@ -136,8 +135,8 @@ def test_settings_focus_signature_ignores_ext_classes_noise() -> None:
     }
     navigation = {
         "open_settings": ["press_middle"],
-        "open_widget": ["swipe_left"],
-        "open_workout": ["swipe_up"],
+        "open_widget": ["swipe_up"],
+        "open_workout": ["press_top"],
         "go_back": ["press_bottom_left"],
         "workout_pause_resume": ["press_top"],
     }
@@ -165,8 +164,8 @@ def test_open_settings_views_and_return_visits_each_named_view() -> None:
     }
     navigation = {
         "open_settings": ["press_middle"],
-        "open_widget": ["swipe_left"],
-        "open_workout": ["swipe_up"],
+        "open_widget": ["swipe_up"],
+        "open_workout": ["press_top"],
         "go_back": ["press_bottom_left"],
         "workout_pause_resume": ["press_top"],
     }

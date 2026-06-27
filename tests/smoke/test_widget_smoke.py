@@ -4,6 +4,7 @@ from tests.conftest import read_content
 
 
 @pytest.mark.device
+@pytest.mark.smoke
 def test_open_widget_and_return(device_dsl) -> None:
     case_name = "smoke_widget"
     with device_dsl.session.case(case_name, expected_page="main"):
