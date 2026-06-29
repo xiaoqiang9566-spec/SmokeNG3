@@ -51,6 +51,11 @@ class WatchSession:
     def close_view(self, view_name: str) -> None:
         self.device.close_view(view_name)
 
+    def release_device_bypasses(self) -> None:
+        release_bypasses = getattr(self.device, "release_bypasses", None)
+        if callable(release_bypasses):
+            release_bypasses()
+
     def record_step(
         self, case_name: str, name: str, status: str, **extra: object
     ) -> None:

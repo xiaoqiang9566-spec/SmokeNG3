@@ -96,6 +96,27 @@ def test_watch_session_proxies_device_calls_and_records_outputs() -> None:
     assert writer.results[0].case_name == "case_a"
 
 
+def test_watch_session_release_device_bypasses_when_supported() -> None:
+    device = FakeDevice()
+    writer = FakeArtifactWriter()
+    session = WatchSession(
+        device=device,
+        artifact_writer=writer,
+        current_page_uri="page://current",
+        baseline_actions=["press_bottom_left"],
+    )
+    released = []
+
+    def release_bypasses() -> None:
+        released.append("done")
+
+    device.release_bypasses = release_bypasses  # type: ignore[attr-defined]
+
+    session.release_device_bypasses()
+
+    assert released == ["done"]
+
+
 def test_watch_session_ensure_baseline_executes_recovery_actions_when_needed() -> None:
     device = FakeDevice()
     writer = FakeArtifactWriter()
@@ -246,6 +267,36 @@ def test_watch_session_case_waits_for_baseline_to_reach_expected_page() -> None:
         session.record_step("case_wait_baseline", "inside_case", "running")
 
     assert device.actions == ["press_middle"]
+    assert writer.assertions[0][1]["name"] == "baseline_ready"
+    assert writer.assertions[0][1]["status"] == "passed"
+    assert writer.results[0].status == "passed"
+
+
+def test_watch_session_case_uses_recover_baseline_action_for_strict_main() -> None:
+    class RecoverToMainDevice(FakeDevice):
+        def __init__(self) -> None:
+            super().__init__()
+            self.payloads["page://current"] = {"Content": "n-char"}
+
+        def perform_actions(self, action_names: list[str]) -> None:
+            self.actions.extend(action_names)
+            self.payloads["page://current"] = {"Content": "main"}
+
+    device = RecoverToMainDevice()
+    writer = FakeArtifactWriter()
+    session = WatchSession(
+        device=device,
+        artifact_writer=writer,
+        current_page_uri="page://current",
+        baseline_actions=["press_bottom"],
+    )
+
+    with session.case("case_recover_main", expected_page="main"):
+        session.record_step("case_recover_main", "inside_case", "running")
+
+    assert device.actions == ["press_bottom"]
+    assert writer.steps[1][1]["name"] == "baseline_recovery"
+    assert writer.steps[1][1]["actual"] == "n-char"
     assert writer.assertions[0][1]["name"] == "baseline_ready"
     assert writer.assertions[0][1]["status"] == "passed"
     assert writer.results[0].status == "passed"

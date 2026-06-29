@@ -30,10 +30,14 @@ navigation:
   open_settings:
     - press_middle
   open_widget:
+    - swipe_up
+  open_pinned_widget_shortcut:
     - swipe_left
   open_workout:
-    - swipe_up
+    - swipe_down
   go_back:
     - press_bottom_left
+  recover_baseline:
+    - press_bottom
   workout_pause_resume:
     - press_top

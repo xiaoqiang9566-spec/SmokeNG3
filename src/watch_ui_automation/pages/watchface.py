@@ -15,6 +15,10 @@ class WatchfacePage(BasePage):
         self.session.record_step(case_name, "open_widget", "running")
         self.session.perform_actions(self.navigation["open_widget"])
 
+    def open_pinned_widget_shortcut(self, case_name: str) -> None:
+        self.session.record_step(case_name, "open_pinned_widget_shortcut", "running")
+        self.session.perform_actions(self.navigation["open_pinned_widget_shortcut"])
+
     def open_workout(self, case_name: str) -> None:
         self.session.record_step(case_name, "open_workout", "running")
         self.session.perform_actions(self.navigation["open_workout"])
