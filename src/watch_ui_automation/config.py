@@ -15,7 +15,9 @@ SUPPORTED_NAVIGATION_ACTIONS = frozenset(
         "press_bottom_left",
         "tap_center",
         "swipe_left",
+        "swipe_right",
         "swipe_up",
+        "swipe_down",
         "rotate_knob_up",
         "rotate_knob_down",
     }
@@ -64,8 +66,10 @@ class InputConfig:
 class NavigationConfig:
     open_settings: list[str]
     open_widget: list[str]
+    open_pinned_widget_shortcut: list[str]
     open_workout: list[str]
     go_back: list[str]
+    recover_baseline: list[str]
     workout_pause_resume: list[str]
 
 

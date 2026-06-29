@@ -14,15 +14,20 @@ python -m pip install -e ".[dev]"
 
 ## 当前导航口径
 
-- `current_page_uri` 使用 `Ui/View/Stack/-1/ViewName`，watchface 基线通常是 `main` 或 `c-lowp`。
+- `current_page_uri` 使用 `Ui/View/Stack/-1/ViewName`，watchface 基线严格是 `main`。
+- baseline recovery 统一使用 `press_bottom`；除 maps widget 外，任何脏状态都应能借此回到 `main`。
 - settings 校验当前走 `Ui/Control/Open/Close` 直开直关，因此它验证的是“view 名称和返回链路”，不是 swipe 校准。
 - widget 校验当前以 `Ui/View/Stack/Path` 为主证据。真机进入 widget list 的默认动作是上滑屏幕，即 `open_widget: [swipe_up]`；路径应该不再停留在 watchface 基线。
-- workout 校验当前以 `current_page` 是否离开 `main` 为主证据；默认导航使用 top 键短按，即 `open_workout: [press_top]`。
+- workout 校验当前以 `current_page/current_widget/workout_state` 联合判断为主证据；默认导航使用下滑手势，即 `open_workout: [swipe_down]`。
 - 物理按键短按默认 `duration: 0.1`；需要长按时显式传 `duration: 2`，不要用触摸事件间隔模拟长按。
 - 2026-06-25 的现有真机产物已经证明旧版 widget/workout 断言存在假阳性：
 - `smoke_widget` / `regression_widget` 通过时，`actual` 仍然是 `/_watch-face(c)/main`
 - `smoke_workout` / `regression_workout` 通过时，`actual` 仍然是 `0`
 - 因此仓库现在把 widget/workout smoke/regression 收紧成“必须看到视图切换证据”，否则直接失败。
+- `swipe_up` 打开 widget list，widget 校验当前以 `Ui/View/Stack/Path` 为主证据。
+- `swipe_left` 打开 pinned widget 快捷入口，不再作为默认 widget list 入口。
+- `swipe_down` 目标语义是打开 workout list，但截至 2026-06-29 真机尚未验证成功；workout 探测当前仍以 `current_page/current_widget/workout_state` 联合判断为准。
+- 2026-06-27 的真机 smoke 已验证 baseline recovery 与 settings 链路通过；widget/workout 仍需继续按新语义校准断言与手势行为。
 
 ## 运行
 

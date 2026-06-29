@@ -76,7 +76,7 @@ def device_dsl(request, project_config: ProjectConfig) -> Iterator[WatchDsl]:
         device=device,
         artifact_writer=writer,
         current_page_uri=project_config.resources.current_page_uri,
-        baseline_actions=project_config.navigation.open_settings,
+        baseline_actions=project_config.navigation.recover_baseline,
         settle_seconds=project_config.timeouts.settle_seconds,
         poll_interval_seconds=project_config.timeouts.poll_interval_seconds,
     )
@@ -93,12 +93,15 @@ def device_dsl(request, project_config: ProjectConfig) -> Iterator[WatchDsl]:
             navigation={
                 "open_settings": project_config.navigation.open_settings,
                 "open_widget": project_config.navigation.open_widget,
+                "open_pinned_widget_shortcut": project_config.navigation.open_pinned_widget_shortcut,
                 "open_workout": project_config.navigation.open_workout,
                 "go_back": project_config.navigation.go_back,
+                "recover_baseline": project_config.navigation.recover_baseline,
                 "workout_pause_resume": project_config.navigation.workout_pause_resume,
             },
         )
     finally:
+        session.release_device_bypasses()
         transport.close()
 
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from collections.abc import Mapping, Sequence
 from typing import Any
 
@@ -30,6 +31,7 @@ DRAG_START = 5
 CLICK = 6
 FLICK = 8
 IDLE = 99
+VERIFIED_TOUCH_EVENT_DELAY_SECONDS = 0.05
 
 
 class SdsDeviceController:
@@ -110,42 +112,57 @@ class SdsDeviceController:
         )
 
     def swipe_left(self) -> None:
-        drag_start_x = self.input_profile.swipe_left_start_x - (
-            (self.input_profile.swipe_left_start_x - self.input_profile.swipe_left_end_x)
-            // 2
-        )
-        pre_drag_x = self.input_profile.swipe_left_start_x - 8
-        mid_x = max(self.input_profile.swipe_left_end_x, drag_start_x - 27)
-        flick_velocity_x = float(self.input_profile.swipe_left_end_x - mid_x) * 12.0
         self._touch_sequence(
             [
-                (self.input_profile.swipe_left_start_x, self.input_profile.swipe_horizontal_y, 0.0, 0.0, TOUCHDOWN),
-                (pre_drag_x, self.input_profile.swipe_horizontal_y, -66.0, 0.0, TOUCHMOVE),
-                (drag_start_x, self.input_profile.swipe_horizontal_y, 0.0, 0.0, DRAG_START),
-                (mid_x, self.input_profile.swipe_horizontal_y, -1100.0, -6.0, TOUCHMOVE),
-                (self.input_profile.swipe_left_end_x, self.input_profile.swipe_horizontal_y, flick_velocity_x, -7.0, LIFTOFF),
-                (self.input_profile.swipe_left_end_x, self.input_profile.swipe_horizontal_y, flick_velocity_x, -7.0, FLICK),
+                (350, 149, 0.0, 0.0, TOUCHDOWN),
+                (350, 149, -66.66666412353516, 0.0, TOUCHMOVE),
+                (214, 148, 0.0, 0.0, DRAG_START),
+                (187, 148, -1089.8284912109375, -5.714285850524902, TOUCHMOVE),
+                (3, 147, -1882.64111328125, -6.948571681976318, LIFTOFF),
+                (3, 147, -1882.64111328125, -6.948571681976318, FLICK),
                 (0, 0, 0.0, 0.0, IDLE),
+            ],
+            inter_event_delay_seconds=VERIFIED_TOUCH_EVENT_DELAY_SECONDS,
+        )
+
+    def swipe_right(self) -> None:
+        self._touch_sequence(
+            [
+                (self.input_profile.swipe_left_end_x, self.input_profile.swipe_horizontal_y, 0.0, 0.0, TOUCHDOWN),
+                (self.input_profile.swipe_left_start_x, self.input_profile.swipe_horizontal_y, 0.0, 0.0, TOUCHMOVE),
+                (self.input_profile.swipe_left_start_x, self.input_profile.swipe_horizontal_y, 0.0, 0.0, LIFTOFF),
+                (self.input_profile.swipe_left_start_x, self.input_profile.swipe_horizontal_y, 0.0, 0.0, IDLE),
             ]
         )
 
     def swipe_up(self) -> None:
-        pre_drag_y = self.input_profile.swipe_up_start_y - 16
-        drag_start_y = self.input_profile.swipe_up_start_y - (
-            (self.input_profile.swipe_up_start_y - self.input_profile.swipe_up_end_y)
-            // 3
-        )
-        mid_y = max(self.input_profile.swipe_up_end_y, drag_start_y - 48)
-        flick_velocity_y = float(self.input_profile.swipe_up_end_y - mid_y) * 18.0
         self._touch_sequence(
             [
-                (self.input_profile.swipe_up_x, self.input_profile.swipe_up_start_y, 0.0, 0.0, TOUCHDOWN),
-                (self.input_profile.swipe_up_x, pre_drag_y, 0.0, -96.0, TOUCHMOVE),
-                (self.input_profile.swipe_up_x, drag_start_y, 0.0, 0.0, DRAG_START),
-                (self.input_profile.swipe_up_x, mid_y, 0.0, -480.0, TOUCHMOVE),
-                (self.input_profile.swipe_up_x, self.input_profile.swipe_up_end_y, 104.0, flick_velocity_y, LIFTOFF),
-                (self.input_profile.swipe_up_x, self.input_profile.swipe_up_end_y, 104.0, flick_velocity_y, FLICK),
+                (101, 350, 0.0, 0.0, TOUCHDOWN),
+                (101, 350, 34.782604217529297, -139.13041687011719, TOUCHMOVE),
+                (138, 350, 0.0, 0.0, DRAG_START),
+                (143, 350, 102.95651245117188, -352.0, TOUCHMOVE),
+                (148, 116, 69.60235595703125, -349.12554931640625, TOUCHMOVE),
+                (154, 116, 53.57699203491211, -214.89886474609375, TOUCHMOVE),
+                (154, 116, 6.943579196929932, -357.33355712890625, TOUCHMOVE),
+                (154, 116, 0.8998879790306091, -371.17999267578125, TOUCHMOVE),
+                (154, 116, 0.11662549525499344, -314.7567443847656, TOUCHMOVE),
+                (154, 116, 0.015114667825400829, -402.7499084472656, TOUCHMOVE),
+                (154, 116, 0.0019588612485677004, -364.00244140625, TOUCHMOVE),
+                (154, 116, 0.0019588612485677004, -364.00244140625, LIFTOFF),
+                (154, 116, 0.0019588612485677004, -364.00244140625, FLICK),
                 (0, 0, 0.0, 0.0, IDLE),
+            ],
+            inter_event_delay_seconds=VERIFIED_TOUCH_EVENT_DELAY_SECONDS,
+        )
+
+    def swipe_down(self) -> None:
+        self._touch_sequence(
+            [
+                (self.input_profile.swipe_up_x, self.input_profile.swipe_up_end_y, 0.0, 0.0, TOUCHDOWN),
+                (self.input_profile.swipe_up_x, self.input_profile.swipe_up_start_y, 0.0, 0.0, TOUCHMOVE),
+                (self.input_profile.swipe_up_x, self.input_profile.swipe_up_start_y, 0.0, 0.0, LIFTOFF),
+                (self.input_profile.swipe_up_x, self.input_profile.swipe_up_start_y, 0.0, 0.0, IDLE),
             ]
         )
 
@@ -156,7 +173,7 @@ class SdsDeviceController:
             SdsRequest(
                 method="PUT",
                 uri=KNOB_URI_TEMPLATE.format(serial=self.serial),
-                body={"event": {"angle": angle, "timestamp": timestamp}},
+                body={"": {"angle": angle, "timestamp": timestamp}},
             ),
             "Knob/Event",
         )
@@ -170,6 +187,18 @@ class SdsDeviceController:
     def perform_actions(self, actions: Sequence[str]) -> None:
         for action_name in actions:
             self.perform_action(action_name)
+
+    def release_bypasses(self) -> None:
+        response = self.transport.send_and_wait(
+            SdsRequest(
+                method="DEL",
+                uri=f"{BYPASS_ROUTER_URI}/{self.serial}",
+                body={},
+            )
+        )
+        if response.status not in {200, 204, 404}:
+            raise RuntimeError(f"BypassRouter request failed with status {response.status}")
+        self._active_bypasses.clear()
 
     def _press_button(self, button_id: int, duration: float) -> None:
         self._send_checked(
@@ -195,10 +224,12 @@ class SdsDeviceController:
                 method="PUT",
                 uri=TOUCH_URI_TEMPLATE.format(serial=self.serial),
                 body={
-                    "x": x,
-                    "y": y,
-                    "data": {"x": velocity_x, "y": velocity_y},
-                    "type": event_type,
+                    "": {
+                        "x": x,
+                        "y": y,
+                        "data": {"x": velocity_x, "y": velocity_y},
+                        "type": event_type,
+                    }
                 },
             ),
             "Touch/Event",
@@ -221,10 +252,14 @@ class SdsDeviceController:
         self._active_bypasses.add(resource_path)
 
     def _touch_sequence(
-        self, events: Sequence[tuple[int, int, float, float, int]]
+        self,
+        events: Sequence[tuple[int, int, float, float, int]],
+        inter_event_delay_seconds: float = 0.0,
     ) -> None:
         for x, y, velocity_x, velocity_y, event_type in events:
             self._touch(x, y, event_type, velocity_x, velocity_y)
+            if inter_event_delay_seconds > 0:
+                time.sleep(inter_event_delay_seconds)
 
     def _read_timestamp(self) -> int:
         payload = self.read_json(DEVICE_TIME_URI_TEMPLATE.format(serial=self.serial))

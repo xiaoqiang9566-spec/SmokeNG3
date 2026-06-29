@@ -39,10 +39,14 @@ def test_package_bootstrap_loads_yaml_config(tmp_path: Path) -> None:
                 "    - press_middle",
                 "  open_widget:",
                 "    - swipe_up",
+                "  open_pinned_widget_shortcut:",
+                "    - swipe_left",
                 "  open_workout:",
-                "    - press_top",
+                "    - swipe_down",
                 "  go_back:",
                 "    - press_bottom_left",
+                "  recover_baseline:",
+                "    - press_bottom",
                 "  workout_pause_resume:",
                 "    - press_top",
             ]
@@ -93,10 +97,14 @@ def test_package_bootstrap_loads_input_and_navigation_config(tmp_path: Path) -> 
                 "    - press_middle",
                 "  open_widget:",
                 "    - swipe_up",
+                "  open_pinned_widget_shortcut:",
+                "    - swipe_left",
                 "  open_workout:",
-                "    - press_top",
+                "    - swipe_down",
                 "  go_back:",
                 "    - press_bottom_left",
+                "  recover_baseline:",
+                "    - press_bottom",
                 "  workout_pause_resume:",
                 "    - press_top",
             ]
@@ -108,7 +116,8 @@ def test_package_bootstrap_loads_input_and_navigation_config(tmp_path: Path) -> 
 
     assert config.input.tap_center_x == 233
     assert config.navigation.open_widget == ["swipe_up"]
-    assert config.navigation.open_workout == ["press_top"]
+    assert config.navigation.open_pinned_widget_shortcut == ["swipe_left"]
+    assert config.navigation.open_workout == ["swipe_down"]
 
 
 def test_default_config_matches_task4_defaults() -> None:
@@ -124,8 +133,10 @@ def test_default_config_matches_task4_defaults() -> None:
     assert config.input.swipe_up_end_y == 120
     assert config.navigation.open_settings == ["press_middle"]
     assert config.navigation.open_widget == ["swipe_up"]
-    assert config.navigation.open_workout == ["press_top"]
+    assert config.navigation.open_pinned_widget_shortcut == ["swipe_left"]
+    assert config.navigation.open_workout == ["swipe_down"]
     assert config.navigation.go_back == ["press_bottom_left"]
+    assert config.navigation.recover_baseline == ["press_bottom"]
     assert config.navigation.workout_pause_resume == ["press_top"]
 
 
@@ -164,10 +175,14 @@ def test_load_project_config_rejects_invalid_navigation_action(
                 "    - press_middle",
                 "  open_widget:",
                 "    - swipe_up",
+                "  open_pinned_widget_shortcut:",
+                "    - swipe_left",
                 "  open_workout:",
                 "    - invalid_action",
                 "  go_back:",
                 "    - press_bottom_left",
+                "  recover_baseline:",
+                "    - press_bottom",
                 "  workout_pause_resume:",
                 "    - press_top",
             ]
@@ -214,10 +229,14 @@ def test_load_project_config_rejects_invalid_input_coordinate_type(
                 "    - press_middle",
                 "  open_widget:",
                 "    - swipe_up",
+                "  open_pinned_widget_shortcut:",
+                "    - swipe_left",
                 "  open_workout:",
-                "    - press_top",
+                "    - swipe_down",
                 "  go_back:",
                 "    - press_bottom_left",
+                "  recover_baseline:",
+                "    - press_bottom",
                 "  workout_pause_resume:",
                 "    - press_top",
             ]
@@ -232,8 +251,12 @@ def test_load_project_config_rejects_invalid_input_coordinate_type(
 def test_supported_navigation_actions_include_task4_defaults() -> None:
     assert "press_middle" in SUPPORTED_NAVIGATION_ACTIONS
     assert "swipe_left" in SUPPORTED_NAVIGATION_ACTIONS
+    assert "swipe_right" in SUPPORTED_NAVIGATION_ACTIONS
+    assert "swipe_up" in SUPPORTED_NAVIGATION_ACTIONS
+    assert "swipe_down" in SUPPORTED_NAVIGATION_ACTIONS
     assert "press_top_left" in SUPPORTED_NAVIGATION_ACTIONS
     assert "press_bottom_left" in SUPPORTED_NAVIGATION_ACTIONS
+    assert "press_bottom" in SUPPORTED_NAVIGATION_ACTIONS
     assert "press_top" in SUPPORTED_NAVIGATION_ACTIONS
 
 

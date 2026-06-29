@@ -78,8 +78,10 @@ def navigation() -> NavigationConfig:
     return NavigationConfig(
         open_settings=["press_middle"],
         open_widget=["swipe_up"],
-        open_workout=["press_top"],
+        open_pinned_widget_shortcut=["swipe_left"],
+        open_workout=["swipe_down"],
         go_back=["press_bottom_left"],
+        recover_baseline=["press_bottom"],
         workout_pause_resume=["press_top"],
     )
 
@@ -278,28 +280,36 @@ def test_tap_center_sends_numeric_touch_sequence(
             "pathToBypass": "/Device/UserInteraction/Touch/Event",
         },
         {
-            "x": 233,
-            "y": 233,
-            "data": {"x": 0.0, "y": 0.0},
-            "type": 1,
+            "": {
+                "x": 233,
+                "y": 233,
+                "data": {"x": 0.0, "y": 0.0},
+                "type": 1,
+            },
         },
         {
-            "x": 233,
-            "y": 233,
-            "data": {"x": 0.0, "y": 0.0},
-            "type": 3,
+            "": {
+                "x": 233,
+                "y": 233,
+                "data": {"x": 0.0, "y": 0.0},
+                "type": 3,
+            },
         },
         {
-            "x": 233,
-            "y": 233,
-            "data": {"x": 0.0, "y": 0.0},
-            "type": 6,
+            "": {
+                "x": 233,
+                "y": 233,
+                "data": {"x": 0.0, "y": 0.0},
+                "type": 6,
+            },
         },
         {
-            "x": 233,
-            "y": 233,
-            "data": {"x": 0.0, "y": 0.0},
-            "type": 99,
+            "": {
+                "x": 233,
+                "y": 233,
+                "data": {"x": 0.0, "y": 0.0},
+                "type": 99,
+            },
         },
     ]
 
@@ -322,46 +332,112 @@ def test_swipe_left_sends_numeric_touch_sequence(
     }
     assert [request.body for request in transport.requests[1:]] == [
         {
-            "x": 420,
-            "y": 233,
-            "data": {"x": 0.0, "y": 0.0},
-            "type": 1,
+            "": {
+                "x": 350,
+                "y": 149,
+                "data": {"x": 0.0, "y": 0.0},
+                "type": 1,
+            },
         },
         {
-            "x": 412,
-            "y": 233,
-            "data": {"x": -66.0, "y": 0.0},
-            "type": 2,
+            "": {
+                "x": 350,
+                "y": 149,
+                "data": {"x": -66.66666412353516, "y": 0.0},
+                "type": 2,
+            },
         },
         {
-            "x": 233,
-            "y": 233,
-            "data": {"x": 0.0, "y": 0.0},
-            "type": 5,
+            "": {
+                "x": 214,
+                "y": 148,
+                "data": {"x": 0.0, "y": 0.0},
+                "type": 5,
+            },
         },
         {
-            "x": 206,
-            "y": 233,
-            "data": {"x": -1100.0, "y": -6.0},
-            "type": 2,
+            "": {
+                "x": 187,
+                "y": 148,
+                "data": {"x": -1089.8284912109375, "y": -5.714285850524902},
+                "type": 2,
+            },
         },
         {
-            "x": 46,
-            "y": 233,
-            "data": {"x": -1920.0, "y": -7.0},
-            "type": 3,
+            "": {
+                "x": 3,
+                "y": 147,
+                "data": {"x": -1882.64111328125, "y": -6.948571681976318},
+                "type": 3,
+            },
         },
         {
-            "x": 46,
-            "y": 233,
-            "data": {"x": -1920.0, "y": -7.0},
-            "type": 8,
+            "": {
+                "x": 3,
+                "y": 147,
+                "data": {"x": -1882.64111328125, "y": -6.948571681976318},
+                "type": 8,
+            },
         },
         {
-            "x": 0,
-            "y": 0,
-            "data": {"x": 0.0, "y": 0.0},
-            "type": 99,
+            "": {
+                "x": 0,
+                "y": 0,
+                "data": {"x": 0.0, "y": 0.0},
+                "type": 99,
+            },
+        },
+    ]
+
+
+def test_swipe_right_sends_numeric_touch_sequence(
+    resources: ResourceConfig,
+    input_profile: InputConfig,
+    navigation: NavigationConfig,
+) -> None:
+    transport = FakeTransport()
+    controller = build_controller(transport, resources, input_profile, navigation)
+
+    controller.swipe_right()
+
+    assert transport.requests[0].method == "POST"
+    assert transport.requests[0].uri == "suunto://SDS/BypassRouter"
+    assert transport.requests[0].body == {
+        "serial": "TEST123",
+        "pathToBypass": "/Device/UserInteraction/Touch/Event",
+    }
+    assert [request.body for request in transport.requests[1:]] == [
+        {
+            "": {
+                "x": 46,
+                "y": 233,
+                "data": {"x": 0.0, "y": 0.0},
+                "type": 1,
+            },
+        },
+        {
+            "": {
+                "x": 420,
+                "y": 233,
+                "data": {"x": 0.0, "y": 0.0},
+                "type": 2,
+            },
+        },
+        {
+            "": {
+                "x": 420,
+                "y": 233,
+                "data": {"x": 0.0, "y": 0.0},
+                "type": 3,
+            },
+        },
+        {
+            "": {
+                "x": 420,
+                "y": 233,
+                "data": {"x": 0.0, "y": 0.0},
+                "type": 99,
+            },
         },
     ]
 
@@ -384,46 +460,168 @@ def test_swipe_up_sends_numeric_touch_sequence(
     }
     assert [request.body for request in transport.requests[1:]] == [
         {
-            "x": 233,
-            "y": 360,
-            "data": {"x": 0.0, "y": 0.0},
-            "type": 1,
+            "": {
+                "x": 101,
+                "y": 350,
+                "data": {"x": 0.0, "y": 0.0},
+                "type": 1,
+            },
         },
         {
-            "x": 233,
-            "y": 344,
-            "data": {"x": 0.0, "y": -96.0},
-            "type": 2,
+            "": {
+                "x": 101,
+                "y": 350,
+                "data": {"x": 34.782604217529297, "y": -139.13041687011719},
+                "type": 2,
+            },
         },
         {
-            "x": 233,
-            "y": 280,
-            "data": {"x": 0.0, "y": 0.0},
-            "type": 5,
+            "": {
+                "x": 138,
+                "y": 350,
+                "data": {"x": 0.0, "y": 0.0},
+                "type": 5,
+            },
         },
         {
-            "x": 233,
-            "y": 232,
-            "data": {"x": 0.0, "y": -480.0},
-            "type": 2,
+            "": {
+                "x": 143,
+                "y": 350,
+                "data": {"x": 102.95651245117188, "y": -352.0},
+                "type": 2,
+            },
         },
         {
-            "x": 233,
-            "y": 120,
-            "data": {"x": 104.0, "y": -2016.0},
-            "type": 3,
+            "": {
+                "x": 148,
+                "y": 116,
+                "data": {"x": 69.60235595703125, "y": -349.12554931640625},
+                "type": 2,
+            },
         },
         {
-            "x": 233,
-            "y": 120,
-            "data": {"x": 104.0, "y": -2016.0},
-            "type": 8,
+            "": {
+                "x": 154,
+                "y": 116,
+                "data": {"x": 53.57699203491211, "y": -214.89886474609375},
+                "type": 2,
+            },
         },
         {
-            "x": 0,
-            "y": 0,
-            "data": {"x": 0.0, "y": 0.0},
-            "type": 99,
+            "": {
+                "x": 154,
+                "y": 116,
+                "data": {"x": 6.943579196929932, "y": -357.33355712890625},
+                "type": 2,
+            },
+        },
+        {
+            "": {
+                "x": 154,
+                "y": 116,
+                "data": {"x": 0.8998879790306091, "y": -371.17999267578125},
+                "type": 2,
+            },
+        },
+        {
+            "": {
+                "x": 154,
+                "y": 116,
+                "data": {"x": 0.11662549525499344, "y": -314.7567443847656},
+                "type": 2,
+            },
+        },
+        {
+            "": {
+                "x": 154,
+                "y": 116,
+                "data": {"x": 0.015114667825400829, "y": -402.7499084472656},
+                "type": 2,
+            },
+        },
+        {
+            "": {
+                "x": 154,
+                "y": 116,
+                "data": {"x": 0.0019588612485677004, "y": -364.00244140625},
+                "type": 2,
+            },
+        },
+        {
+            "": {
+                "x": 154,
+                "y": 116,
+                "data": {"x": 0.0019588612485677004, "y": -364.00244140625},
+                "type": 3,
+            },
+        },
+        {
+            "": {
+                "x": 154,
+                "y": 116,
+                "data": {"x": 0.0019588612485677004, "y": -364.00244140625},
+                "type": 8,
+            },
+        },
+        {
+            "": {
+                "x": 0,
+                "y": 0,
+                "data": {"x": 0.0, "y": 0.0},
+                "type": 99,
+            },
+        },
+    ]
+
+
+def test_swipe_down_sends_numeric_touch_sequence(
+    resources: ResourceConfig,
+    input_profile: InputConfig,
+    navigation: NavigationConfig,
+) -> None:
+    transport = FakeTransport()
+    controller = build_controller(transport, resources, input_profile, navigation)
+
+    controller.swipe_down()
+
+    assert transport.requests[0].method == "POST"
+    assert transport.requests[0].uri == "suunto://SDS/BypassRouter"
+    assert transport.requests[0].body == {
+        "serial": "TEST123",
+        "pathToBypass": "/Device/UserInteraction/Touch/Event",
+    }
+    assert [request.body for request in transport.requests[1:]] == [
+        {
+            "": {
+                "x": 233,
+                "y": 120,
+                "data": {"x": 0.0, "y": 0.0},
+                "type": 1,
+            },
+        },
+        {
+            "": {
+                "x": 233,
+                "y": 360,
+                "data": {"x": 0.0, "y": 0.0},
+                "type": 2,
+            },
+        },
+        {
+            "": {
+                "x": 233,
+                "y": 360,
+                "data": {"x": 0.0, "y": 0.0},
+                "type": 3,
+            },
+        },
+        {
+            "": {
+                "x": 233,
+                "y": 360,
+                "data": {"x": 0.0, "y": 0.0},
+                "type": 99,
+            },
         },
     ]
 
@@ -480,7 +678,7 @@ def test_rotate_knob_up_reads_time_before_sending_knob_event(
     }
     assert transport.requests[1].method == "GET"
     assert transport.requests[2].method == "PUT"
-    assert transport.requests[2].body == {"event": {"angle": 15, "timestamp": 123456}}
+    assert transport.requests[2].body == {"": {"angle": 15, "timestamp": 123456}}
 
 
 def test_rotate_knob_up_raises_when_time_payload_is_invalid(
@@ -566,3 +764,34 @@ def test_close_view_sends_put_request_to_ui_control_close(
     assert transport.requests[0].method == "PUT"
     assert transport.requests[0].uri == "suunto://TEST123/Ui/Control/Close"
     assert transport.requests[0].body == {"name": "s-main"}
+
+
+def test_release_bypasses_sends_delete_request_for_serial(
+    resources: ResourceConfig,
+    input_profile: InputConfig,
+    navigation: NavigationConfig,
+) -> None:
+    transport = FakeTransport()
+    controller = build_controller(transport, resources, input_profile, navigation)
+
+    controller.release_bypasses()
+
+    assert transport.requests[0].method == "DEL"
+    assert transport.requests[0].uri == "suunto://SDS/BypassRouter/TEST123"
+    assert transport.requests[0].body == {}
+
+
+def test_release_bypasses_treats_missing_bypass_as_noop(
+    resources: ResourceConfig,
+    input_profile: InputConfig,
+    navigation: NavigationConfig,
+) -> None:
+    transport = FakeTransport(
+        statuses={"suunto://SDS/BypassRouter/TEST123": 404}
+    )
+    controller = build_controller(transport, resources, input_profile, navigation)
+
+    controller.release_bypasses()
+
+    assert transport.requests[0].method == "DEL"
+    assert transport.requests[0].uri == "suunto://SDS/BypassRouter/TEST123"
